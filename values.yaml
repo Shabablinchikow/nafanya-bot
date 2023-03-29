@@ -4,6 +4,10 @@
 
 replicaCount: 1
 
+app:
+  name: nafanya-bot
+  version: 0.1.0
+
 image:
   repository: registry.digitalocean.com/shaba/nafanya-bot
   pullPolicy: always
@@ -17,10 +21,6 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
-
-env:
-  AI_TOKEN: {{ .secrets.AI_TOKEN }}
-  BOT_TOKEN: {{ .secrets.BOT_TOKEN }}
 
 nodeSelector: {}
 

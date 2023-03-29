@@ -43,16 +43,10 @@ jobs:
           tags: registry.digitalocean.com/shaba/nafanya-bot:${{github.sha}}, registry.digitalocean.com/shaba/nafanya-bot:master
 
       - name: Save DigitalOcean kubeconfig with short-lived credentials
-        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 kluster
+        run: doctl kubernetes cluster kubeconfig show --expiry-seconds 600 kluster
 
-      - name: 'Deploy'
-        uses: 'vimeda/helm@v1.6.8'
-        with:
-          release: 'nafanya-bot'
-          namespace: 'default'
-          chart: 'app'
-          token: '${{ github.token }}'
-          value-files: "values.yaml"
-          secrets: >
-            { "AI_TOKEN": ${{ secrets.AI_TOKEN }}, "BOT_TOKEN": ${{ secrets.BOT_TOKEN }} }
-          atomic: true
+      - name: Helm tool installer
+        uses: Azure/setup-helm@v3
+
+      - name: Run Helm upgrade
+        run: helm upgrade --atomic --install nafanya-bot charts/app -f values.yaml --set env.AI_TOKEN=${{ secrets.AI_TOKEN }} --set env.BOT_TOKEN=${{ secrets.BOT_TOKEN}}
