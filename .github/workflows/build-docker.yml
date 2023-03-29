@@ -53,5 +53,6 @@ jobs:
           chart: 'app'
           token: '${{ github.token }}'
           value-files: "values.yaml"
-          secrets:
+          secrets: >
+            { "AI_TOKEN": ${{ secrets.AI_TOKEN }}, "BOT_TOKEN": ${{ secrets.BOT_TOKEN }} }
           atomic: true

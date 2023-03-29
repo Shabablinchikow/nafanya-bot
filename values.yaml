@@ -18,6 +18,10 @@ resources:
     cpu: 100m
     memory: 128Mi
 
+env:
+  AI_TOKEN: {{ .secrets.AI_TOKEN }}
+  BOT_TOKEN: {{ .secrets.BOT_TOKEN }}
+
 nodeSelector: {}
 
 tolerations: []
