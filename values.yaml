@@ -10,7 +10,7 @@ app:
 
 image:
   repository: registry.digitalocean.com/shaba/nafanya-bot
-  pullPolicy: always
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: "master"
 
