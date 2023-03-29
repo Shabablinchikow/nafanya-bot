@@ -12,7 +12,6 @@
 app.kubernetes.io/name: {{ required "app.name variable is required" .Values.app.name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ required "app.version variable is required" .Values.app.version | quote }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ include "app.chart" . }}
 {{- end -}}
 

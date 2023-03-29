@@ -7,7 +7,6 @@ metadata:
     "deliverybot.dev/secret-checksum": {{ toJson .Values.secrets | sha256sum }}
   labels:
 {{ include "app.labels" . | indent 4 }}
-# noinspection YAMLDuplicatedKeys
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -17,8 +16,7 @@ spec:
     metadata:
       labels:
 {{ include "app.matchLabels" . | indent 8 }}
-# noinspection YAMLDuplicatedKeys
-spec:
+    spec:
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
