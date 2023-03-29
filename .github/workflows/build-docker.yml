@@ -43,7 +43,7 @@ jobs:
           tags: registry.digitalocean.com/shaba/nafanya-bot:${{github.sha}}, registry.digitalocean.com/shaba/nafanya-bot:master
 
       - name: Save DigitalOcean kubeconfig with short-lived credentials
-        run: doctl kubernetes cluster kubeconfig show --expiry-seconds 600 kluster
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 kluster
 
       - name: Helm tool installer
         uses: Azure/setup-helm@v3
