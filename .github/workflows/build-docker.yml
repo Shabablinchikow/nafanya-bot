@@ -46,7 +46,7 @@ jobs:
         run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 kluster
 
       - name: 'Deploy'
-        uses: 'deliverybot/helm@v1'
+        uses: 'vimeda/helm@v1.6.8'
         with:
           release: 'nafanya-bot'
           namespace: 'default'
