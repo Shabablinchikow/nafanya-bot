@@ -2,7 +2,6 @@ package tgHandler
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -29,6 +28,5 @@ func isItTime(chat int64) bool {
 }
 
 func isPersonal(update tgbotapi.Update) bool {
-	log.Println(update.Message.Text)
 	return strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня")
 }
