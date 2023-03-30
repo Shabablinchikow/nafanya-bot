@@ -8,6 +8,7 @@ var allowedChats = []int64{
 	-934228897,
 	-1001720840717,
 	886350649,
+	1965353629,
 }
 
 func checkAllowed(id int64) bool {
