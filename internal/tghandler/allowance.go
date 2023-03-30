@@ -1,4 +1,4 @@
-package tgHandler
+package tghandler
 
 var allowedChats = []int64{
 	438663,
@@ -10,9 +10,9 @@ var allowedChats = []int64{
 	886350649,
 }
 
-func checkAllowed(ID int64) bool {
+func checkAllowed(id int64) bool {
 	for _, chatID := range allowedChats {
-		if chatID == ID {
+		if chatID == id {
 			return true
 		}
 	}

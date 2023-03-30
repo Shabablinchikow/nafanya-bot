@@ -2,10 +2,10 @@ package main
 
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	openai "github.com/sashabaranov/go-openai"
-	"github.com/shabablinchikow/nafanya-bot/internal/aiHandler"
+	"github.com/sashabaranov/go-openai"
+	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
-	"github.com/shabablinchikow/nafanya-bot/internal/tgHandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/tghandler"
 
 	"log"
 )
@@ -15,7 +15,7 @@ func main() {
 	config := cfg.LoadConfig()
 
 	ai := openai.NewClient(config.AIToken)
-	aiHndlr := aiHandler.NewHandler(ai)
+	aiHndlr := aihandler.NewHandler(ai)
 
 	bot, err := tgbotapi.NewBotAPI(config.BotToken)
 	if err != nil {
@@ -31,7 +31,7 @@ func main() {
 
 	updates := bot.GetUpdatesChan(u)
 
-	handler := tgHandler.NewHandler(bot, aiHndlr)
+	handler := tghandler.NewHandler(bot, aiHndlr)
 
 	for update := range updates {
 		handler.HandleEvents(update)

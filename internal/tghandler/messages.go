@@ -1,19 +1,19 @@
-package tgHandler
+package tghandler
 
 import (
 	"encoding/json"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/shabablinchikow/nafanya-bot/internal/aiHandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"log"
 	"strconv"
 )
 
 type Handler struct {
 	bot *tgbotapi.BotAPI
-	ai  *aiHandler.Handler
+	ai  *aihandler.Handler
 }
 
-func NewHandler(bot *tgbotapi.BotAPI, ai *aiHandler.Handler) *Handler {
+func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler) *Handler {
 	return &Handler{
 		bot: bot,
 		ai:  ai,
@@ -27,12 +27,10 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 			switch {
 			case update.Message.IsCommand():
 				h.commandHandler(update)
-				break
 			case isPersonal(update):
 				h.personalHandler(update)
 			case isItTime(update.Message.Chat.ID):
 				h.randomInterference(update)
-				break
 			}
 		}
 	} else {
