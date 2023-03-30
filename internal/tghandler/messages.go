@@ -27,12 +27,10 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 			switch {
 			case update.Message.IsCommand():
 				h.commandHandler(update)
-				break
 			case isPersonal(update):
 				h.personalHandler(update)
 			case isItTime(update.Message.Chat.ID):
 				h.randomInterference(update)
-				break
 			}
 		}
 	} else {
