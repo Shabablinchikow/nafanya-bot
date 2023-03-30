@@ -5,8 +5,10 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
+	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"github.com/shabablinchikow/nafanya-bot/internal/tghandler"
-
+	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"log"
 )
 
@@ -17,9 +19,21 @@ func main() {
 	ai := openai.NewClient(config.AIToken)
 	aiHndlr := aihandler.NewHandler(ai)
 
-	bot, err := tgbotapi.NewBotAPI(config.BotToken)
+	dbDSN := "host=" + config.DBHost + " user=" + config.DBUser + " password=" + config.DBPass + " dbname=" + config.DBName + " port=" + config.DBPort + " sslmode=" + config.DBSSL
+	dbConfig := &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			TablePrefix: config.DBPrefix,
+		},
+	}
+	db, err := domain.NewHandler(dbDSN, dbConfig)
+
 	if err != nil {
 		log.Panic(err)
+	}
+
+	bot, err2 := tgbotapi.NewBotAPI(config.BotToken)
+	if err2 != nil {
+		log.Panic(err2)
 	}
 
 	bot.Debug = config.DebugMode
@@ -31,7 +45,7 @@ func main() {
 
 	updates := bot.GetUpdatesChan(u)
 
-	handler := tghandler.NewHandler(bot, aiHndlr)
+	handler := tghandler.NewHandler(bot, aiHndlr, db)
 
 	for update := range updates {
 		handler.HandleEvents(update)

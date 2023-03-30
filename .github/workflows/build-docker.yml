@@ -47,4 +47,4 @@ jobs:
         uses: Azure/setup-helm@v3
 
       - name: Run Helm upgrade
-        run: helm upgrade --atomic --install nafanya-bot charts/app -f values.yaml --set image.tag=${{github.sha}} --set secrets.ai_token=${{ secrets.AI_TOKEN }} --set secrets.bot_token=${{ secrets.BOT_TOKEN}}
+        run: helm upgrade --atomic --install nafanya-bot charts/app -f values.yaml --set image.tag=${{github.sha}} --set secrets.ai_token=${{ secrets.AI_TOKEN }} --set secrets.bot_token=${{ secrets.BOT_TOKEN}} --set secrets.db_pass=${{ secrets.DB_PASS }} --set secrets.db_user=${{ secrets.DB_USER }} --set secrets.db_name=${{ vars.DB_NAME }} --set secrets.db_host=${{ vars.DB_HOST }} --set secrets.db_port=${{ vars.DB_PORT }} --set secrets.db_sslmode=${{ vars.DB_SSLMODE }}

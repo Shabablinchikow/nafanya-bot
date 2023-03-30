@@ -4,25 +4,40 @@ import (
 	"encoding/json"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"log"
 	"strconv"
 )
 
 type Handler struct {
-	bot *tgbotapi.BotAPI
-	ai  *aihandler.Handler
+	bot      *tgbotapi.BotAPI
+	ai       *aihandler.Handler
+	db       *domain.Handler
+	channels []domain.Channel
 }
 
-func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler) *Handler {
+const (
+	openAIErrorMessage = "Something went wrong with OpenAI API"
+	helloMessage       = "Hello, I'm Nafanya Bot!"
+)
+
+func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler) *Handler {
+	channels, err := db.GetAllChannelsConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	return &Handler{
-		bot: bot,
-		ai:  ai,
+		bot:      bot,
+		ai:       ai,
+		db:       db,
+		channels: channels,
 	}
 }
 
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
-	if checkAllowed(update.Message.Chat.ID) {
+	if h.checkAllowed(update.Message.Chat.ID) {
 		if update.Message != nil { // If we got a message
 			switch {
 			case update.Message.IsCommand():
@@ -53,14 +68,11 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 	switch update.Message.Command() {
 	case "start":
 		h.startMessage(update)
-
-	case "question":
-		h.questionMessage(update)
 	}
 }
 
 func (h *Handler) startMessage(update tgbotapi.Update) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Hello, I'm Nafanya Bot!")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, helloMessage)
 	msg.ReplyToMessageID = update.Message.MessageID
 
 	_, err := h.bot.Send(msg)
@@ -69,31 +81,12 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 	}
 }
 
-func (h *Handler) questionMessage(update tgbotapi.Update) {
-	var message string
-	ans, err := h.ai.GetQuestionResponse(update.Message.CommandArguments())
-	if err != nil {
-		log.Println(err)
-		message = "Something went wrong"
-	} else {
-		message = ans
-	}
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-	msg.ReplyToMessageID = update.Message.MessageID
-
-	_, err2 := h.bot.Send(msg)
-	if err2 != nil {
-		log.Println(err2)
-	}
-}
-
 func (h *Handler) randomInterference(update tgbotapi.Update) {
 	var message string
-	ans, err := h.ai.GetQuestionResponse(update.Message.CommandArguments())
+	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
 	if err != nil {
 		log.Println(err)
-		message = "Something went wrong"
+		message = openAIErrorMessage
 	} else {
 		message = ans
 	}
@@ -109,10 +102,10 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 
 func (h *Handler) personalHandler(update tgbotapi.Update) {
 	var message string
-	ans, err := h.ai.GetQuestionResponse(update.Message.Text)
+	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
 	if err != nil {
 		log.Println(err)
-		message = "Something went wrong"
+		message = openAIErrorMessage
 	} else {
 		message = ans
 	}

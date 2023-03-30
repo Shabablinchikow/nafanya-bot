@@ -1,21 +1,19 @@
 package tghandler
 
-var allowedChats = []int64{
-	438663,
-	189049,
-	89895968,
-	-1720840717,
-	-934228897,
-	-1001720840717,
-	886350649,
-	1965353629,
-}
+import (
+	"github.com/shabablinchikow/nafanya-bot/internal/domain"
+	"golang.org/x/exp/slices"
+	"time"
+)
 
-func checkAllowed(id int64) bool {
-	for _, chatID := range allowedChats {
-		if chatID == id {
-			return true
-		}
+func (h *Handler) checkAllowed(id int64) bool {
+	idx := slices.IndexFunc(h.channels, func(channel domain.Channel) bool {
+		return channel.ID == id
+	})
+
+	if idx == -1 || h.channels[idx].BilledTo.Before(time.Now()) {
+		return false
 	}
-	return false
+
+	return true
 }

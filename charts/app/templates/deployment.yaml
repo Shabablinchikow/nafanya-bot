@@ -30,6 +30,18 @@ spec:
               value: {{ .Values.secrets.ai_token }}
             - name: BOT_TOKEN
               value: {{ .Values.secrets.bot_token }}
+            - name: DB_HOST
+              value: {{ .Values.secrets.db_host }}
+            - name: DB_PORT
+              value: {{ .Values.secrets.db_port }}
+            - name: DB_USER
+              value: {{ .Values.secrets.db_user }}
+            - name: DB_PASS
+              value: {{ .Values.secrets.db_pass }}
+            - name: DB_NAME
+              value: {{ .Values.secrets.db_name }}
+            - name: DB_SSLMODE
+              value: {{ .Values.secrets.db_sslmode }}
           ports:
             - name: http
               containerPort: {{ .Values.service.internalPort }}
