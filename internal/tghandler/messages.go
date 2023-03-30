@@ -1,19 +1,19 @@
-package tgHandler
+package tghandler
 
 import (
 	"encoding/json"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/shabablinchikow/nafanya-bot/internal/aiHandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"log"
 	"strconv"
 )
 
 type Handler struct {
 	bot *tgbotapi.BotAPI
-	ai  *aiHandler.Handler
+	ai  *aihandler.Handler
 }
 
-func NewHandler(bot *tgbotapi.BotAPI, ai *aiHandler.Handler) *Handler {
+func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler) *Handler {
 	return &Handler{
 		bot: bot,
 		ai:  ai,

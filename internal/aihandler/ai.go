@@ -1,11 +1,11 @@
-package aiHandler
+package aihandler
 
 import (
 	"context"
+	"crypto/rand"
 	"github.com/sashabaranov/go-openai"
 	"log"
-	"math/rand"
-	"time"
+	"math/big"
 )
 
 type Handler struct {
@@ -81,8 +81,11 @@ func (h *Handler) GetInterferenceResponse(prompt string) (string, error) {
 }
 
 func rollEmotion() string {
-	s := rand.NewSource(time.Now().Unix())
-	r := rand.New(s) // initialize local pseudorandom generator
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(emotionList))))
+	if err != nil {
+		panic(err)
+	}
+	n := nBig.Int64()
 
-	return emotionList[r.Intn(len(emotionList))]
+	return emotionList[n]
 }
