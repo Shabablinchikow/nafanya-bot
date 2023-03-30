@@ -22,4 +22,4 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-          args: --issues-exit-code=0
+          only-new-issues: true
