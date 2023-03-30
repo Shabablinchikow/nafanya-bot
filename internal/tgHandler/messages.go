@@ -1,9 +1,11 @@
 package tgHandler
 
 import (
+	"encoding/json"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aiHandler"
 	"log"
+	"strconv"
 )
 
 type Handler struct {
@@ -32,6 +34,19 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				h.randomInterference(update)
 				break
 			}
+		}
+	} else {
+		chatID, err := h.bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: update.Message.Chat.ID}})
+		if err != nil {
+			log.Println(err)
+		}
+		rawChatData, _ := json.Marshal(chatID)
+		message := "Can't process message from chat " + chatID.Title + "with ID " + strconv.FormatInt(chatID.ID, 10) + "and raw data \n" + string(rawChatData)
+		msg := tgbotapi.NewMessage(438663, message)
+
+		_, err2 := h.bot.Send(msg)
+		if err2 != nil {
+			log.Println(err2)
 		}
 	}
 }
