@@ -2,6 +2,7 @@ package tghandler
 
 import (
 	"crypto/rand"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
@@ -35,6 +36,7 @@ var emotionList = []string{
 func isItTime(chat int64) bool {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(100))
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 	n := nBig.Int64()
@@ -55,6 +57,7 @@ func isPersonal(update tgbotapi.Update) bool {
 func rollEmotion() string {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(emotionList))))
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 	n := nBig.Int64()

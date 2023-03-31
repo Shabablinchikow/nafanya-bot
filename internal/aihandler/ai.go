@@ -2,6 +2,7 @@ package aihandler
 
 import (
 	"context"
+	"github.com/getsentry/sentry-go"
 	"github.com/sashabaranov/go-openai"
 	"log"
 )
@@ -35,6 +36,7 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string) (string, er
 			Messages: messages,
 		})
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Println("Completion error:", err)
 		return "", err
 	}
