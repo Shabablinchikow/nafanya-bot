@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sashabaranov/go-openai"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
@@ -10,11 +11,33 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 	"log"
+	"time"
 )
 
 func main() {
 	// Load the config from the environment variables
 	config := cfg.LoadConfig()
+
+	var env string
+	if config.DebugMode {
+		env = "development"
+	} else {
+		env = "production"
+	}
+
+	errSentry := sentry.Init(sentry.ClientOptions{
+		Dsn:              config.SentryDSN,
+		AttachStacktrace: true,
+		TracesSampleRate: 1.0,
+		EnableTracing:    true,
+		Environment:      env,
+	})
+	if errSentry != nil {
+		log.Fatalf("sentry.Init: %s", errSentry)
+	}
+
+	defer sentry.Recover()
+	defer sentry.Flush(2 * time.Second)
 
 	ai := openai.NewClient(config.AIToken)
 	aiHndlr := aihandler.NewHandler(ai)
@@ -28,11 +51,13 @@ func main() {
 	db, err := domain.NewHandler(dbDSN, dbConfig)
 
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Panic(err)
 	}
 
 	bot, err2 := tgbotapi.NewBotAPI(config.BotToken)
 	if err2 != nil {
+		sentry.CaptureException(err2)
 		log.Panic(err2)
 	}
 

@@ -33,6 +33,7 @@ services:
       DB_NAME: postgres
       AI_TOKEN: ${AI_TOKEN}
       BOT_TOKEN: ${BOT_TOKEN}
+      SENTRY_DSN: ${SENTRY_DSN}
       DEBUG_MODE: true
 volumes:
   db:

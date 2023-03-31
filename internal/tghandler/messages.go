@@ -2,6 +2,7 @@ package tghandler
 
 import (
 	"encoding/json"
+	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
@@ -24,6 +25,7 @@ const (
 func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler) *Handler {
 	channels, err := db.GetAllChannelsConfig()
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 
@@ -51,6 +53,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	} else {
 		chatID, err := h.bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: update.Message.Chat.ID}})
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Println(err)
 		}
 		rawChatData, _ := json.Marshal(chatID)
@@ -59,6 +62,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 
 		_, err2 := h.bot.Send(msg)
 		if err2 != nil {
+			sentry.CaptureException(err2)
 			log.Println(err2)
 		}
 	}
@@ -77,6 +81,7 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 
 	_, err := h.bot.Send(msg)
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Println(err)
 	}
 }
@@ -85,6 +90,7 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 	var message string
 	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Println(err)
 		message = openAIErrorMessage
 	} else {
@@ -96,6 +102,7 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 
 	_, err2 := h.bot.Send(msg)
 	if err2 != nil {
+		sentry.CaptureException(err2)
 		log.Println(err2)
 	}
 }
@@ -104,6 +111,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 	var message string
 	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
 	if err != nil {
+		sentry.CaptureException(err)
 		log.Println(err)
 		message = openAIErrorMessage
 	} else {
@@ -115,6 +123,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 
 	_, err2 := h.bot.Send(msg)
 	if err2 != nil {
+		sentry.CaptureException(err2)
 		log.Println(err2)
 	}
 }

@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"github.com/getsentry/sentry-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -12,6 +13,7 @@ type Handler struct {
 func NewHandler(dsn string, config gorm.Option) (*Handler, error) {
 	db, err := gorm.Open(postgres.Open(dsn), config)
 	if err != nil {
+		sentry.CaptureException(err)
 		return nil, err
 	}
 

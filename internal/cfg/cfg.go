@@ -14,6 +14,7 @@ type Cfg struct {
 	DBSSL    string
 	DBPrefix string
 
+	SentryDSN string
 	DebugMode bool
 }
 
@@ -31,6 +32,7 @@ func LoadConfig() Cfg {
 	cfg.DBSSL = getEnv("DB_SSL", "disable")
 	cfg.DBPrefix = getEnv("DB_PREFIX", "nafanya_")
 
+	cfg.SentryDSN = getEnv("SENTRY_DSN", "")
 	cfg.DebugMode = getEnv("DEBUG_MODE", "false") == "true"
 
 	return cfg
