@@ -10,24 +10,32 @@ type Handler struct {
 	db *gorm.DB
 }
 
-func NewHandler(dsn string, config gorm.Option) (*Handler, error) {
+func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, error) {
 	db, err := gorm.Open(postgres.Open(dsn), config)
 	if err != nil {
 		sentry.CaptureException(err)
 		return nil, err
 	}
 
-	// TODO: fix migration
-	/*err2 := db.AutoMigrate(&Channel{})
+	err2 := db.AutoMigrate(&Chat{}, &BotConfig{})
 	if err2 != nil {
 		panic(err2)
-	}*/
+	}
+
+	// create default bot config if it doesn't exist
+	var rowCount int64
+	db.Find(&BotConfig{}).Count(&rowCount)
+	if rowCount == 0 {
+		db.Create(&BotConfig{
+			Admins: []int64{defaultAdmin},
+		})
+	}
 
 	return &Handler{db}, nil
 }
 
-func (h *Handler) GetAllChannelsConfig() ([]Channel, error) {
-	var channels []Channel
+func (h *Handler) GetAllChannelsConfig() ([]Chat, error) {
+	var channels []Chat
 	if err := h.db.Find(&channels).Error; err != nil {
 		return nil, err
 	}
@@ -35,19 +43,36 @@ func (h *Handler) GetAllChannelsConfig() ([]Channel, error) {
 	return channels, nil
 }
 
-func (h *Handler) GetChannelConfig(id int64) (Channel, error) {
-	var channel Channel
+func (h *Handler) GetChannelConfig(id int64) (Chat, error) {
+	var channel Chat
 	if err := h.db.First(&channel, id).Error; err != nil {
-		return Channel{}, err
+		return Chat{}, err
 	}
 
 	return channel, nil
 }
 
-func (h *Handler) CreateChannelConfig(channel Channel) error {
-	if err := h.db.Create(&channel).Error; err != nil {
+func (h *Handler) CreateChannelConfig(channel Chat) error {
+	return h.db.Create(&channel).Error
+}
+
+func (h *Handler) UpdateChannelConfig(channel Chat) error {
+	return h.db.Save(&channel).Error
+}
+
+func (h *Handler) GetBotConfig() (BotConfig, error) {
+	var botConfig BotConfig
+	err := h.db.First(&botConfig).Error
+
+	return botConfig, err
+}
+
+func (h *Handler) AddAdmin(id int64) error {
+	currentConfig, err := h.GetBotConfig()
+	if err != nil {
 		return err
 	}
 
-	return nil
+	currentConfig.Admins = append(currentConfig.Admins, id)
+	return h.db.Updates(&currentConfig).Error
 }

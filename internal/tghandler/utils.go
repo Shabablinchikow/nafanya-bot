@@ -66,11 +66,11 @@ func rollEmotion() string {
 }
 
 func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string) {
-	idx := slices.IndexFunc(h.channels, func(channel domain.Channel) bool {
+	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
 		return channel.ID == id
 	})
 
-	curChannel := h.channels[idx]
+	curChannel := h.chats[idx]
 
 	userInput = update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + update.Message.Text
 
@@ -95,4 +95,12 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 	log.Println("User input: " + userInput)
 
 	return prompt, userInput
+}
+
+func (h *Handler) reloadChannels() {
+	var err error
+	h.chats, err = h.db.GetAllChannelsConfig()
+	if err != nil {
+		panic(err)
+	}
 }

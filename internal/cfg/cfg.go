@@ -1,10 +1,14 @@
 package cfg
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Cfg struct {
-	BotToken string
-	AIToken  string
+	BotToken     string
+	AIToken      string
+	DefaultAdmin int64
 
 	DBHost   string
 	DBPort   string
@@ -24,6 +28,13 @@ func LoadConfig() Cfg {
 
 	cfg.BotToken = fillEnv("BOT_TOKEN")
 	cfg.AIToken = fillEnv("AI_TOKEN")
+
+	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	cfg.DefaultAdmin = adminID
+
 	cfg.DBHost = fillEnv("DB_HOST")
 	cfg.DBPort = fillEnv("DB_PORT")
 	cfg.DBUser = fillEnv("DB_USER")

@@ -48,7 +48,7 @@ func main() {
 			TablePrefix: config.DBPrefix,
 		},
 	}
-	db, err := domain.NewHandler(dbDSN, dbConfig)
+	db, err := domain.NewHandler(dbDSN, dbConfig, config.DefaultAdmin)
 
 	if err != nil {
 		sentry.CaptureException(err)
