@@ -6,7 +6,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
-	"log"
 	"math/big"
 	"strings"
 	"time"
@@ -91,9 +90,6 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 		prompt = strings.ReplaceAll(curChannel.RandomInterferencePrompt, "{emotion}", rollEmotion())
 	}
 
-	log.Println("Prompt: " + prompt)
-	log.Println("User input: " + userInput)
-
 	return prompt, userInput
 }
 
@@ -101,6 +97,7 @@ func (h *Handler) reloadChannels() {
 	var err error
 	h.chats, err = h.db.GetAllChannelsConfig()
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 }

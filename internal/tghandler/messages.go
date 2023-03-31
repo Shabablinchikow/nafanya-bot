@@ -50,7 +50,6 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	if h.checkChatExists(update.Message.Chat) {
 		if h.checkAllowed(update.Message.Chat.ID) || h.isAdmin(update.Message.From.ID) {
 			if update.Message != nil { // If we got a message
-				log.Println(update.Message.IsCommand())
 				switch {
 				case update.Message.IsCommand():
 					h.commandHandler(update)
@@ -83,7 +82,6 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 }
 
 func (h *Handler) commandHandler(update tgbotapi.Update) {
-	log.Println(update.Message.Command())
 	switch update.Message.Command() {
 	case "start":
 		h.startMessage(update)
@@ -163,6 +161,7 @@ func (h *Handler) listChats(update tgbotapi.Update) {
 
 		_, err := h.bot.Send(msg)
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Println(err)
 		}
 	}
@@ -172,17 +171,20 @@ func (h *Handler) chat(update tgbotapi.Update) {
 	if h.isAdmin(update.Message.From.ID) {
 		id, err := strconv.ParseInt(update.Message.CommandArguments(), 10, 64)
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Println(err)
 			return
 		}
 		chat, err2 := h.db.GetChannelConfig(id)
 		if err2 != nil {
+			sentry.CaptureException(err2)
 			log.Println(err2)
 			return
 		}
 
 		chatData, err3 := json.Marshal(chat)
 		if err3 != nil {
+			sentry.CaptureException(err3)
 			log.Println(err3)
 			return
 		}
@@ -192,6 +194,7 @@ func (h *Handler) chat(update tgbotapi.Update) {
 
 		_, err4 := h.bot.Send(msg)
 		if err4 != nil {
+			sentry.CaptureException(err4)
 			log.Println(err4)
 		}
 	}
@@ -203,17 +206,20 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 		if len(args) == 2 {
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
+				sentry.CaptureException(err)
 				log.Println(err)
 				return
 			}
 			chat, err2 := h.db.GetChannelConfig(id)
 			if err2 != nil {
+				sentry.CaptureException(err2)
 				log.Println(err2)
 				return
 			}
 
 			days, err3 := strconv.Atoi(args[1])
 			if err3 != nil {
+				sentry.CaptureException(err3)
 				log.Println(err3)
 				return
 			}
@@ -225,6 +231,7 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 			}
 			err4 := h.db.UpdateChannelConfig(chat)
 			if err4 != nil {
+				sentry.CaptureException(err4)
 				log.Println(err4)
 				return
 			}
@@ -236,6 +243,7 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 
 			_, err5 := h.bot.Send(msg)
 			if err5 != nil {
+				sentry.CaptureException(err5)
 				log.Println(err5)
 			}
 		} else {
@@ -244,6 +252,7 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 
 			_, err := h.bot.Send(msg)
 			if err != nil {
+				sentry.CaptureException(err)
 				log.Println(err)
 			}
 		}
@@ -254,11 +263,13 @@ func (h *Handler) chatMakeVIP(update tgbotapi.Update) {
 	if h.isAdmin(update.Message.From.ID) {
 		id, err := strconv.ParseInt(update.Message.CommandArguments(), 10, 64)
 		if err != nil {
+			sentry.CaptureException(err)
 			log.Println(err)
 			return
 		}
 		chat, err2 := h.db.GetChannelConfig(id)
 		if err2 != nil {
+			sentry.CaptureException(err2)
 			log.Println(err2)
 			return
 		}
@@ -266,6 +277,7 @@ func (h *Handler) chatMakeVIP(update tgbotapi.Update) {
 		chat.BilledTo = time.Date(2077, 1, 1, 0, 0, 0, 0, time.UTC)
 		err3 := h.db.UpdateChannelConfig(chat)
 		if err3 != nil {
+			sentry.CaptureException(err3)
 			log.Println(err3)
 			return
 		}
@@ -275,9 +287,10 @@ func (h *Handler) chatMakeVIP(update tgbotapi.Update) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
 		msg.ReplyToMessageID = update.Message.MessageID
 
-		_, err5 := h.bot.Send(msg)
-		if err5 != nil {
-			log.Println(err5)
+		_, err4 := h.bot.Send(msg)
+		if err4 != nil {
+			sentry.CaptureException(err4)
+			log.Println(err4)
 		}
 	}
 }

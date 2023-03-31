@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"github.com/getsentry/sentry-go"
 	"os"
 	"strconv"
 )
@@ -31,6 +32,7 @@ func LoadConfig() Cfg {
 
 	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
 	if err != nil {
+		sentry.CaptureException(err)
 		panic(err)
 	}
 	cfg.DefaultAdmin = adminID
@@ -50,11 +52,11 @@ func LoadConfig() Cfg {
 }
 
 func fillEnv(key string) string {
-	if value, ok := os.LookupEnv(key); ok {
+	value, ok := os.LookupEnv(key)
+	if ok {
 		return value
-	} else {
-		panic(key + " not set")
 	}
+	panic(key + " not set")
 }
 
 // getEnv returns the value of the environment variable or the fallback value
