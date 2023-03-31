@@ -50,8 +50,8 @@ func isItTime(chat int64) bool {
 	return false
 }
 
-func isPersonal(update tgbotapi.Update) bool {
-	return strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня")
+func (h *Handler) isPersonal(update tgbotapi.Update) bool {
+	return strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня") || update.Message.ReplyToMessage.From.ID == h.bot.Self.ID
 }
 
 func rollEmotion() string {
