@@ -70,6 +70,7 @@ func (h *Handler) GetBotConfig() (BotConfig, error) {
 func (h *Handler) AddAdmin(id int64) error {
 	currentConfig, err := h.GetBotConfig()
 	if err != nil {
+		sentry.CaptureException(err)
 		return err
 	}
 
