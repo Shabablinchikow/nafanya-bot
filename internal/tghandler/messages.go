@@ -60,15 +60,17 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 					h.randomInterference(update)
 				}
 			}
-		} else {
-
 		}
 	} else {
 		channel := domain.GetDefaultChat()
 
 		channel.ID = update.Message.Chat.ID
 		channel.Type = update.Message.Chat.Type
-		channel.ChatName = update.Message.Chat.Title
+		if update.Message.Chat.Type == "private" {
+			channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
+		} else {
+			channel.ChatName = update.Message.Chat.Title
+		}
 
 		err := h.db.CreateChannelConfig(channel)
 		if err != nil {
@@ -216,7 +218,11 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 				return
 			}
 
-			chat.BilledTo = chat.BilledTo.AddDate(0, 0, days)
+			if chat.BilledTo.Before(time.Now()) {
+				chat.BilledTo = time.Now().AddDate(0, 0, days)
+			} else {
+				chat.BilledTo = chat.BilledTo.AddDate(0, 0, days)
+			}
 			err4 := h.db.UpdateChannelConfig(chat)
 			if err4 != nil {
 				log.Println(err4)
@@ -241,7 +247,6 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 				log.Println(err)
 			}
 		}
-
 	}
 }
 
