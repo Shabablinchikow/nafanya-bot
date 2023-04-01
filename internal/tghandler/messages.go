@@ -2,10 +2,12 @@ package tghandler
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
+	"golang.org/x/exp/slices"
 	"log"
 	"strconv"
 	"strings"
@@ -13,11 +15,12 @@ import (
 )
 
 type Handler struct {
-	bot    *tgbotapi.BotAPI
-	ai     *aihandler.Handler
-	db     *domain.Handler
-	chats  []domain.Chat
-	config domain.BotConfig
+	bot       *tgbotapi.BotAPI
+	ai        *aihandler.Handler
+	db        *domain.Handler
+	chats     []domain.Chat
+	config    domain.BotConfig
+	chatCache map[int64]chatCache
 }
 
 const (
@@ -37,16 +40,18 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 	}
 
 	return &Handler{
-		bot:    bot,
-		ai:     ai,
-		db:     db,
-		chats:  channels,
-		config: config,
+		bot:       bot,
+		ai:        ai,
+		db:        db,
+		chats:     channels,
+		config:    config,
+		chatCache: make(map[int64]chatCache),
 	}
 }
 
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
+	defer sentry.Recover()
 	if h.checkChatExists(update.Message.Chat) {
 		if h.checkAllowed(update.Message.Chat.ID) || h.isAdmin(update.Message.From.ID) {
 			if update.Message != nil { // If we got a message
@@ -55,7 +60,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 					h.commandHandler(update)
 				case h.isPersonal(update):
 					h.personalHandler(update)
-				case isItTime(update.Message.Chat.ID):
+				case h.isItTime(update.Message.Chat.ID):
 					h.randomInterference(update)
 				}
 			}
@@ -93,6 +98,12 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatAddDays(update)
 	case "chatMakeVIP":
 		h.chatMakeVIP(update)
+	case "chatConfig":
+		h.chatConfig(update)
+	case "chatSetAgro":
+		h.chatSetAgro(update)
+	case "chatSetAgroCooldown":
+		h.chatSetAgroCooldown(update)
 	}
 }
 
@@ -150,10 +161,22 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 }
 
 func (h *Handler) listChats(update tgbotapi.Update) {
+	defer sentry.Recover()
 	if h.isAdmin(update.Message.From.ID) {
 		var message string
 		for _, chat := range h.chats {
-			message += "/chat " + strconv.FormatInt(chat.ID, 10) + "\n Chat: " + chat.ChatName + "\n Type: " + chat.Type + "\n\n"
+			var lastRand string
+			if val, ok := h.chatCache[chat.ID]; !ok {
+				lastRand = "never"
+			} else {
+				lastRand = val.lastRand.Format("2006-01-02 15:04:05")
+			}
+			message += "/chat " + strconv.FormatInt(chat.ID, 10) +
+				"\nChat: " + chat.ChatName +
+				"\nType: " + chat.Type +
+				"\nLast rand: " + lastRand +
+				"\nBilledTo: " + chat.BilledTo.Format("2006-01-02 15:04:05") +
+				"\n\n"
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
@@ -291,6 +314,134 @@ func (h *Handler) chatMakeVIP(update tgbotapi.Update) {
 		if err4 != nil {
 			sentry.CaptureException(err4)
 			log.Println(err4)
+		}
+	}
+}
+
+func (h *Handler) chatConfig(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
+			return channel.ID == update.Message.Chat.ID
+		})
+		if idx == -1 {
+			return
+		}
+
+		chat := h.chats[idx]
+
+		message := "Chat: " +
+			chat.ChatName +
+			"\n\nAgro level: " + strconv.Itoa(chat.AgroLevel) + "%" +
+			"\n/chatSetAgro <level> - set agro level (chance in %)" +
+			"\n0 - disable agro" +
+			"\n\nAgro cooldown: " + strconv.Itoa(chat.AgroCooldown) + "min" +
+			"\n/chatSetAgroCooldown <cooldown> - set agro cooldown (in minutes). Minimum is 10, max is 1440" +
+			"\nIf bot is restarted on server - cooldown will be reset, sorry" +
+			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
+		msg.ReplyToMessageID = update.Message.MessageID
+
+		_, err := h.bot.Send(msg)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+		}
+	}
+}
+
+func (h *Handler) chatSetAgro(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		newAgro, err := strconv.Atoi(update.Message.CommandArguments())
+
+		if newAgro < 0 || newAgro > 100 {
+			err = errors.New("invalid agro format, use number from 0 to 100")
+		}
+
+		if err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid agro format, use number from 0 to 100")
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			_, err2 := h.bot.Send(msg)
+			if err2 != nil {
+				sentry.CaptureException(err2)
+				log.Println(err2)
+			}
+			return
+		}
+
+		chat, err3 := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err3 != nil {
+			sentry.CaptureException(err3)
+			log.Println(err3)
+			return
+		}
+
+		chat.AgroLevel = newAgro
+		err4 := h.db.UpdateChannelConfig(chat)
+		if err4 != nil {
+			sentry.CaptureException(err4)
+			log.Println(err4)
+			return
+		}
+
+		h.reloadChannels()
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
+		msg.ReplyToMessageID = update.Message.MessageID
+
+		_, err5 := h.bot.Send(msg)
+		if err5 != nil {
+			sentry.CaptureException(err5)
+			log.Println(err5)
+		}
+	}
+}
+
+func (h *Handler) chatSetAgroCooldown(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		newCooldown, err := strconv.Atoi(update.Message.CommandArguments())
+
+		if newCooldown < 10 || newCooldown > 1440 {
+			err = errors.New("invalid agro format, use number from 10 to 1440")
+		}
+
+		if err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid cooldown format, use number from 10 to 1440")
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			_, err2 := h.bot.Send(msg)
+			if err2 != nil {
+				sentry.CaptureException(err2)
+				log.Println(err2)
+			}
+			return
+		}
+
+		chat, err3 := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err3 != nil {
+			sentry.CaptureException(err3)
+			log.Println(err3)
+			return
+		}
+
+		chat.AgroCooldown = newCooldown
+		err4 := h.db.UpdateChannelConfig(chat)
+		if err4 != nil {
+			sentry.CaptureException(err4)
+			log.Println(err4)
+			return
+		}
+
+		h.reloadChannels()
+
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
+		msg.ReplyToMessageID = update.Message.MessageID
+
+		_, err5 := h.bot.Send(msg)
+		if err5 != nil {
+			sentry.CaptureException(err5)
+			log.Println(err5)
 		}
 	}
 }
