@@ -16,11 +16,9 @@ const (
 	RandomInterference = 2
 )
 
-type ChatCache struct {
+type chatCache struct {
 	lastRand time.Time
 }
-
-var cache = make(map[int64]ChatCache)
 
 // emotionList is a list of strings containing all available emotions
 var emotionList = []string{
@@ -32,7 +30,20 @@ var emotionList = []string{
 	"с жестким негативом",
 }
 
-func isItTime(chat int64) bool {
+func (h *Handler) isItTime(chat int64) bool {
+	defer sentry.Recover()
+
+	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
+		return channel.ID == chat
+	})
+	if idx == -1 {
+		return false
+	}
+
+	if h.chats[idx].Type == domain.ChatTypePrivate {
+		return false
+	}
+
 	nBig, err := rand.Int(rand.Reader, big.NewInt(100))
 	if err != nil {
 		sentry.CaptureException(err)
@@ -40,9 +51,17 @@ func isItTime(chat int64) bool {
 	}
 	n := nBig.Int64()
 
-	if n > 95 && time.Since(cache[chat].lastRand) > 10*time.Minute {
-		newCache := ChatCache{time.Now()}
-		cache[chat] = newCache
+	if _, ok := h.chatCache[chat]; !ok {
+		newCache := chatCache{lastRand: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)}
+		h.chatCache[chat] = newCache
+	}
+
+	agroLevel := int64(h.chats[idx].AgroLevel)
+	cooldown := time.Duration(h.chats[idx].AgroCooldown)
+
+	if n > (100-agroLevel) && time.Since(h.chatCache[chat].lastRand) > (cooldown*time.Minute) {
+		newCache := chatCache{lastRand: time.Now()}
+		h.chatCache[chat] = newCache
 		return true
 	}
 
@@ -50,7 +69,12 @@ func isItTime(chat int64) bool {
 }
 
 func (h *Handler) isPersonal(update tgbotapi.Update) bool {
-	return strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня") || update.Message.ReplyToMessage.From.ID == h.bot.Self.ID
+	if strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня") {
+		return true
+	} else if update.Message.ReplyToMessage != nil {
+		return update.Message.ReplyToMessage.From.ID == h.bot.Self.ID
+	}
+	return false
 }
 
 func rollEmotion() string {
