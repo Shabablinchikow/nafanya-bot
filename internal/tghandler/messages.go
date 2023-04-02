@@ -1,6 +1,7 @@
 package tghandler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/getsentry/sentry-go"
@@ -54,13 +55,20 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
 	if update.Message != nil { // If we got a message
 		if h.checkChatExists(update.Message.Chat) {
+			ctx := context.WithValue(context.Background(), "chat", update.Message.Chat.ID)
 			switch {
 			case update.Message.IsCommand():
+				span := sentry.StartSpan(ctx, "command", sentry.TransactionName("Handle tg command"))
 				h.commandHandler(update)
+				span.Finish()
 			case h.isPersonal(update):
+				span := sentry.StartSpan(ctx, "personal", sentry.TransactionName("Handle tg personal message"))
 				h.personalHandler(update)
+				span.Finish()
 			case h.isItTime(update.Message.Chat.ID):
+				span := sentry.StartSpan(ctx, "random", sentry.TransactionName("Handle tg random interference"))
 				h.randomInterference(update)
+				span.Finish()
 			}
 		} else {
 			channel := domain.GetDefaultChat()
