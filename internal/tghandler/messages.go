@@ -70,6 +70,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				h.randomInterference(update)
 				span.Finish()
 			}
+			ctx.Done()
 		} else {
 			channel := domain.GetDefaultChat()
 
