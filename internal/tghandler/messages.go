@@ -53,9 +53,11 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
+	ctx := context.WithValue(context.Background(), "update data", update)
+	sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
+	sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
 	if update.Message != nil { // If we got a message
 		if h.checkChatExists(update.Message.Chat) {
-			ctx := context.WithValue(context.Background(), "update data", update)
 			switch {
 			case update.Message.IsCommand():
 				span := sentry.StartSpan(ctx, "command", sentry.TransactionName("Handle tg command"))
