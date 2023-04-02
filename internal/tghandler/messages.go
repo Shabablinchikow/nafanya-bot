@@ -55,7 +55,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
 	if update.Message != nil { // If we got a message
 		if h.checkChatExists(update.Message.Chat) {
-			ctx := context.WithValue(context.Background(), "chat", update.Message.Chat.ID)
+			ctx := context.WithValue(context.Background(), "update data", update)
 			switch {
 			case update.Message.IsCommand():
 				span := sentry.StartSpan(ctx, "command", sentry.TransactionName("Handle tg command"))
