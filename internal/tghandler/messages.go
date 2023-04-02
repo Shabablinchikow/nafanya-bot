@@ -52,37 +52,35 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
-	if h.checkChatExists(update.Message.Chat) {
-		if h.checkAllowed(update.Message.Chat.ID) || h.isAdmin(update.Message.From.ID) {
-			if update.Message != nil { // If we got a message
-				switch {
-				case update.Message.IsCommand():
-					h.commandHandler(update)
-				case h.isPersonal(update):
-					h.personalHandler(update)
-				case h.isItTime(update.Message.Chat.ID):
-					h.randomInterference(update)
-				}
+	if update.Message != nil { // If we got a message
+		if h.checkChatExists(update.Message.Chat) {
+			switch {
+			case update.Message.IsCommand():
+				h.commandHandler(update)
+			case h.isPersonal(update):
+				h.personalHandler(update)
+			case h.isItTime(update.Message.Chat.ID):
+				h.randomInterference(update)
 			}
-		}
-	} else {
-		channel := domain.GetDefaultChat()
-
-		channel.ID = update.Message.Chat.ID
-		channel.Type = update.Message.Chat.Type
-		if update.Message.Chat.Type == "private" {
-			channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
 		} else {
-			channel.ChatName = update.Message.Chat.Title
-		}
+			channel := domain.GetDefaultChat()
 
-		err := h.db.CreateChannelConfig(channel)
-		if err != nil {
-			sentry.CaptureException(err)
-			log.Println(err)
-		}
+			channel.ID = update.Message.Chat.ID
+			channel.Type = update.Message.Chat.Type
+			if update.Message.Chat.Type == "private" {
+				channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
+			} else {
+				channel.ChatName = update.Message.Chat.Title
+			}
 
-		h.reloadChannels()
+			err := h.db.CreateChannelConfig(channel)
+			if err != nil {
+				sentry.CaptureException(err)
+				log.Println(err)
+			}
+
+			h.reloadChannels()
+		}
 	}
 }
 
@@ -119,44 +117,48 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 }
 
 func (h *Handler) randomInterference(update tgbotapi.Update) {
-	var message string
-	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
-	if err != nil {
-		sentry.CaptureException(err)
-		log.Println(err)
-		message = openAIErrorMessage
-	} else {
-		message = ans
-	}
+	if h.checkAllowed(update.Message.Chat.ID) {
+		var message string
+		ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			message = openAIErrorMessage
+		} else {
+			message = ans
+		}
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-	msg.ReplyToMessageID = update.Message.MessageID
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
+		msg.ReplyToMessageID = update.Message.MessageID
 
-	_, err2 := h.bot.Send(msg)
-	if err2 != nil {
-		sentry.CaptureException(err2)
-		log.Println(err2)
+		_, err2 := h.bot.Send(msg)
+		if err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
+		}
 	}
 }
 
 func (h *Handler) personalHandler(update tgbotapi.Update) {
-	var message string
-	ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
-	if err != nil {
-		sentry.CaptureException(err)
-		log.Println(err)
-		message = openAIErrorMessage
-	} else {
-		message = ans
-	}
+	if h.checkAllowed(update.Message.Chat.ID) {
+		var message string
+		ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			message = openAIErrorMessage
+		} else {
+			message = ans
+		}
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-	msg.ReplyToMessageID = update.Message.MessageID
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
+		msg.ReplyToMessageID = update.Message.MessageID
 
-	_, err2 := h.bot.Send(msg)
-	if err2 != nil {
-		sentry.CaptureException(err2)
-		log.Println(err2)
+		_, err2 := h.bot.Send(msg)
+		if err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
+		}
 	}
 }
 
