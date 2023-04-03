@@ -27,6 +27,8 @@ type Handler struct {
 const (
 	openAIErrorMessage = "Something went wrong with OpenAI API"
 	helloMessage       = "Hello, I'm Nafanya Bot!"
+
+	eventContextKey = "update data"
 )
 
 func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler) *Handler {
@@ -53,10 +55,10 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
-	ctx := context.WithValue(context.Background(), "update data", update)
-	sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
+	ctx := context.WithValue(context.Background(), eventContextKey, update)
 	sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
 	if update.Message != nil { // If we got a message
+		sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
 		if h.checkChatExists(update.Message.Chat) {
 			switch {
 			case update.Message.IsCommand():
