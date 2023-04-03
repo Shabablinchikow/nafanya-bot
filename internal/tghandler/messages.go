@@ -27,8 +27,6 @@ type Handler struct {
 const (
 	openAIErrorMessage = "Something went wrong with OpenAI API"
 	helloMessage       = "Hello, I'm Nafanya Bot!"
-
-	eventContextKey = "update data"
 )
 
 func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler) *Handler {
@@ -55,10 +53,10 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 // HandleEvents handles the events from the bot API
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
-	ctx := context.WithValue(context.Background(), eventContextKey, update)
-	sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
+	ctx := context.Background()
 	if update.Message != nil { // If we got a message
 		sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
+		sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
 		if h.checkChatExists(update.Message.Chat) {
 			switch {
 			case update.Message.IsCommand():
@@ -130,24 +128,26 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 }
 
 func (h *Handler) randomInterference(update tgbotapi.Update) {
-	if h.checkAllowed(update.Message.Chat.ID) {
-		var message string
-		ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
-		if err != nil {
-			sentry.CaptureException(err)
-			log.Println(err)
-			message = openAIErrorMessage
-		} else {
-			message = ans
-		}
+	if len(update.Message.Text) > 20 && len(strings.Split(update.Message.Text, " ")) > 3 {
+		if h.checkAllowed(update.Message.Chat.ID) {
+			var message string
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
+			if err != nil {
+				sentry.CaptureException(err)
+				log.Println(err)
+				message = openAIErrorMessage
+			} else {
+				message = ans
+			}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-		msg.ReplyToMessageID = update.Message.MessageID
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
+			msg.ReplyToMessageID = update.Message.MessageID
 
-		_, err2 := h.bot.Send(msg)
-		if err2 != nil {
-			sentry.CaptureException(err2)
-			log.Println(err2)
+			_, err2 := h.bot.Send(msg)
+			if err2 != nil {
+				sentry.CaptureException(err2)
+				log.Println(err2)
+			}
 		}
 	}
 }
