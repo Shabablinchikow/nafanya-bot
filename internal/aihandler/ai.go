@@ -43,3 +43,20 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string) (string, er
 
 	return resp.Choices[0].Message.Content, nil
 }
+
+func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
+	img, err := h.ai.CreateImage(context.Background(),
+		openai.ImageRequest{
+			Prompt:         prompt,
+			N:              1,
+			Size:           openai.CreateImageSize512x512,
+			ResponseFormat: openai.CreateImageResponseFormatURL,
+		})
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println("Image error:", err)
+		return "", err
+	}
+
+	return img.Data[0].URL, nil
+}

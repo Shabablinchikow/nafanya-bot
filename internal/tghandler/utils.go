@@ -6,7 +6,9 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
+	"log"
 	"math/big"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -77,6 +79,19 @@ func (h *Handler) isPersonal(update tgbotapi.Update) bool {
 	return false
 }
 
+func isDraw(update tgbotapi.Update) bool {
+	if strings.Contains(update.Message.Text, "нарисуй") || strings.Contains(update.Message.Text, "Нарисуй") {
+		return true
+	}
+	return false
+
+}
+
+func getCleanDrawPrompt(update string) string {
+	regex := regexp.MustCompile(`[Нн]афаня[, ]*[Нн]арисуй `)
+	return regex.ReplaceAllString(update, "")
+}
+
 func rollEmotion() string {
 	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(emotionList))))
 	if err != nil {
@@ -123,5 +138,37 @@ func (h *Handler) reloadChannels() {
 	if err != nil {
 		sentry.CaptureException(err)
 		panic(err)
+	}
+}
+
+func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
+	msg.ReplyToMessageID = update.Message.MessageID
+
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
+func (h *Handler) sendImageByUrl(update tgbotapi.Update, url string) {
+	photo := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FileURL(url))
+	photo.ReplyToMessageID = update.Message.MessageID
+
+	_, err := h.bot.Send(photo)
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
+func (h *Handler) sendAction(update tgbotapi.Update, action string) {
+	msg := tgbotapi.NewChatAction(update.Message.Chat.ID, action)
+
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
 	}
 }

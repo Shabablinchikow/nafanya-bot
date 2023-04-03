@@ -117,19 +117,13 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 }
 
 func (h *Handler) startMessage(update tgbotapi.Update) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, helloMessage)
-	msg.ReplyToMessageID = update.Message.MessageID
-
-	_, err := h.bot.Send(msg)
-	if err != nil {
-		sentry.CaptureException(err)
-		log.Println(err)
-	}
+	h.sendMessage(update, helloMessage)
 }
 
 func (h *Handler) randomInterference(update tgbotapi.Update) {
 	if len(update.Message.Text) > 20 && len(strings.Split(update.Message.Text, " ")) > 3 {
 		if h.checkAllowed(update.Message.Chat.ID) {
+			h.sendAction(update, tgbotapi.ChatTyping)
 			var message string
 			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
 			if err != nil {
@@ -140,37 +134,35 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 				message = ans
 			}
 
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			_, err2 := h.bot.Send(msg)
-			if err2 != nil {
-				sentry.CaptureException(err2)
-				log.Println(err2)
-			}
+			h.sendMessage(update, message)
 		}
 	}
 }
 
 func (h *Handler) personalHandler(update tgbotapi.Update) {
 	if h.checkAllowed(update.Message.Chat.ID) {
-		var message string
-		ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
-		if err != nil {
-			sentry.CaptureException(err)
-			log.Println(err)
-			message = openAIErrorMessage
+		if isDraw(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
+			h.sendAction(update, tgbotapi.ChatUploadPhoto)
+			url, err := h.ai.GetImageFromPrompt(getCleanDrawPrompt(update.Message.Text))
+			if err != nil {
+				sentry.CaptureException(err)
+				log.Println(err)
+				h.sendMessage(update, openAIErrorMessage)
+			}
+			h.sendImageByUrl(update, url)
 		} else {
-			message = ans
-		}
+			h.sendAction(update, tgbotapi.ChatTyping)
+			var message string
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
+			if err != nil {
+				sentry.CaptureException(err)
+				log.Println(err)
+				message = openAIErrorMessage
+			} else {
+				message = ans
+			}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err2 := h.bot.Send(msg)
-		if err2 != nil {
-			sentry.CaptureException(err2)
-			log.Println(err2)
+			h.sendMessage(update, message)
 		}
 	}
 }
@@ -194,14 +186,7 @@ func (h *Handler) listChats(update tgbotapi.Update) {
 				"\n\n"
 		}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err := h.bot.Send(msg)
-		if err != nil {
-			sentry.CaptureException(err)
-			log.Println(err)
-		}
+		h.sendMessage(update, message)
 	}
 }
 
@@ -227,14 +212,7 @@ func (h *Handler) chat(update tgbotapi.Update) {
 			return
 		}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, string(chatData))
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err4 := h.bot.Send(msg)
-		if err4 != nil {
-			sentry.CaptureException(err4)
-			log.Println(err4)
-		}
+		h.sendMessage(update, string(chatData))
 	}
 }
 
@@ -276,23 +254,9 @@ func (h *Handler) chatAddDays(update tgbotapi.Update) {
 
 			h.reloadChannels()
 
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			_, err5 := h.bot.Send(msg)
-			if err5 != nil {
-				sentry.CaptureException(err5)
-				log.Println(err5)
-			}
+			h.sendMessage(update, "Done")
 		} else {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Wrong arguments")
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			_, err := h.bot.Send(msg)
-			if err != nil {
-				sentry.CaptureException(err)
-				log.Println(err)
-			}
+			h.sendMessage(update, "Wrong number of arguments")
 		}
 	}
 }
@@ -322,14 +286,7 @@ func (h *Handler) chatMakeVIP(update tgbotapi.Update) {
 
 		h.reloadChannels()
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err4 := h.bot.Send(msg)
-		if err4 != nil {
-			sentry.CaptureException(err4)
-			log.Println(err4)
-		}
+		h.sendMessage(update, "Done")
 	}
 }
 
@@ -354,14 +311,7 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\nIf bot is restarted on server - cooldown will be reset, sorry" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err := h.bot.Send(msg)
-		if err != nil {
-			sentry.CaptureException(err)
-			log.Println(err)
-		}
+		h.sendMessage(update, message)
 	}
 }
 
@@ -402,14 +352,7 @@ func (h *Handler) chatSetAgro(update tgbotapi.Update) {
 
 		h.reloadChannels()
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err5 := h.bot.Send(msg)
-		if err5 != nil {
-			sentry.CaptureException(err5)
-			log.Println(err5)
-		}
+		h.sendMessage(update, "Done")
 	}
 }
 
@@ -450,13 +393,6 @@ func (h *Handler) chatSetAgroCooldown(update tgbotapi.Update) {
 
 		h.reloadChannels()
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Done")
-		msg.ReplyToMessageID = update.Message.MessageID
-
-		_, err5 := h.bot.Send(msg)
-		if err5 != nil {
-			sentry.CaptureException(err5)
-			log.Println(err5)
-		}
+		h.sendMessage(update, "Done")
 	}
 }
