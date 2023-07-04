@@ -8,6 +8,7 @@ import (
 	"golang.org/x/exp/slices"
 	"log"
 	"math/big"
+	"mvdan.cc/xurls/v2"
 	"regexp"
 	"strings"
 	"time"
@@ -152,7 +153,7 @@ func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
 	}
 }
 
-func (h *Handler) sendImageByUrl(update tgbotapi.Update, url string) {
+func (h *Handler) sendImageByURL(update tgbotapi.Update, url string) {
 	photo := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FileURL(url))
 	photo.ReplyToMessageID = update.Message.MessageID
 
@@ -171,4 +172,15 @@ func (h *Handler) sendAction(update tgbotapi.Update, action string) {
 		sentry.CaptureException(err)
 		log.Println(err)
 	}
+}
+
+func (h *Handler) isSupportedURL(update tgbotapi.Update) bool {
+	rxRelaxed := xurls.Relaxed()
+	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
+	for _, url := range urls {
+		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://instagram.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://www.instagram.com") {
+			return true
+		}
+	}
+	return false
 }
