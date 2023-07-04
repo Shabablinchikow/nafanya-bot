@@ -406,36 +406,23 @@ func (h *Handler) chatSetAgroCooldown(update tgbotapi.Update) {
 func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
-	isTwitter := false
-	isInstagram := false
 	for _, url := range urls {
 		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://mobile.twitter.com") {
-			isTwitter = true
+			h.sendAction(update, tgbotapi.ChatTyping)
+			url = strings.ReplaceAll(url, "https://twitter.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://vxtwitter.com")
+
+			message := "Saved you a click:\n" + url
+			h.sendMessage(update, message)
 		}
 		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
-			isInstagram = true
-		}
-	}
-	if isTwitter || isInstagram {
-		h.sendAction(update, tgbotapi.ChatTyping)
-		if isTwitter {
-			for _, url := range urls {
-				url = strings.ReplaceAll(url, "https://twitter.com", "https://vxtwitter.com")
-				url = strings.ReplaceAll(url, "https://www.twitter.com", "https://vxtwitter.com")
-				url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://vxtwitter.com")
+			h.sendAction(update, tgbotapi.ChatTyping)
+			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
+			url = strings.ReplaceAll(url, "https://instagram.com", "https://ddinstagram.com")
 
-				message := "Saved you a click:\n" + url
-				h.sendMessage(update, message)
-			}
-		}
-		if isInstagram {
-			for _, url := range urls {
-				url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
-				url = strings.ReplaceAll(url, "https://instagram.com", "https://ddinstagram.com")
-
-				message := "Saved you a click:\n" + url
-				h.sendMessage(update, message)
-			}
+			message := "Saved you a click:\n" + url
+			h.sendMessage(update, message)
 		}
 	}
 }
