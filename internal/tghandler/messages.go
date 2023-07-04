@@ -10,6 +10,7 @@ import (
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
 	"log"
+	"mvdan.cc/xurls/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -66,6 +67,10 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 			case h.isPersonal(update):
 				span := sentry.StartSpan(ctx, "personal", sentry.TransactionName("Handle tg personal message"))
 				h.personalHandler(update)
+				span.Finish()
+			case h.isSupportedURL(update):
+				span := sentry.StartSpan(ctx, "personal", sentry.TransactionName("Handle not previewed URL"))
+				h.fixURLPreview(update)
 				span.Finish()
 			case h.isItTime(update.Message.Chat.ID):
 				span := sentry.StartSpan(ctx, "random", sentry.TransactionName("Handle tg random interference"))
@@ -148,8 +153,9 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 				sentry.CaptureException(err)
 				log.Println(err)
 				h.sendMessage(update, openAIErrorMessage)
+				return
 			}
-			h.sendImageByUrl(update, url)
+			h.sendImageByURL(update, url)
 		} else {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			var message string
@@ -394,5 +400,29 @@ func (h *Handler) chatSetAgroCooldown(update tgbotapi.Update) {
 		h.reloadChannels()
 
 		h.sendMessage(update, "Done")
+	}
+}
+
+func (h *Handler) fixURLPreview(update tgbotapi.Update) {
+	rxRelaxed := xurls.Relaxed()
+	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
+	for _, url := range urls {
+		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://mobile.twitter.com") {
+			h.sendAction(update, tgbotapi.ChatTyping)
+			url = strings.ReplaceAll(url, "https://twitter.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://vxtwitter.com")
+
+			message := "Saved you a click:\n" + url
+			h.sendMessage(update, message)
+		}
+		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
+			h.sendAction(update, tgbotapi.ChatTyping)
+			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
+			url = strings.ReplaceAll(url, "https://instagram.com", "https://ddinstagram.com")
+
+			message := "Saved you a click:\n" + url
+			h.sendMessage(update, message)
+		}
 	}
 }
