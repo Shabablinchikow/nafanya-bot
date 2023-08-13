@@ -178,7 +178,7 @@ func (h *Handler) isSupportedURL(update tgbotapi.Update) bool {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
 	for _, url := range urls {
-		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://instagram.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://www.instagram.com") {
+		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://instagram.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
 			return true
 		}
 	}

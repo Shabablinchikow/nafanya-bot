@@ -416,6 +416,14 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			message := "Saved you a click:\n" + url
 			h.sendMessage(update, message)
 		}
+		if strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
+			h.sendAction(update, tgbotapi.ChatTyping)
+			url = strings.ReplaceAll(url, "https://x.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://www.x.com", "https://vxtwitter.com")
+
+			message := "Saved you a click:\n" + url
+			h.sendMessage(update, message)
+		}
 		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
