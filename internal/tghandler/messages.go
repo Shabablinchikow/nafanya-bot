@@ -61,19 +61,19 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 		if h.checkChatExists(update.Message.Chat) {
 			switch {
 			case update.Message.IsCommand():
-				span := sentry.StartSpan(ctx, "command", sentry.TransactionName("Handle tg command"))
+				span := sentry.StartSpan(ctx, "command", sentry.WithTransactionName("Handle tg command"))
 				h.commandHandler(update)
 				span.Finish()
 			case h.isPersonal(update):
-				span := sentry.StartSpan(ctx, "personal", sentry.TransactionName("Handle tg personal message"))
+				span := sentry.StartSpan(ctx, "personal", sentry.WithTransactionName("Handle tg personal message"))
 				h.personalHandler(update)
 				span.Finish()
 			case h.isSupportedURL(update):
-				span := sentry.StartSpan(ctx, "personal", sentry.TransactionName("Handle not previewed URL"))
+				span := sentry.StartSpan(ctx, "personal", sentry.WithTransactionName("Handle not previewed URL"))
 				h.fixURLPreview(update)
 				span.Finish()
 			case h.isItTime(update.Message.Chat.ID):
-				span := sentry.StartSpan(ctx, "random", sentry.TransactionName("Handle tg random interference"))
+				span := sentry.StartSpan(ctx, "random", sentry.WithTransactionName("Handle tg random interference"))
 				h.randomInterference(update)
 				span.Finish()
 			}

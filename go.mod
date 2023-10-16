@@ -3,7 +3,7 @@ module github.com/shabablinchikow/nafanya-bot
 go 1.20
 
 require (
-	github.com/getsentry/sentry-go v0.22.0
+	github.com/getsentry/sentry-go v0.25.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
 	github.com/sashabaranov/go-openai v1.5.7
