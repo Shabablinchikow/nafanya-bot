@@ -24,6 +24,7 @@ type Chat struct {
 	QuestionPrompt           string    `gorm:"type:text"`
 	RandomInterferencePrompt string    `gorm:"type:text"`
 	EmotionsEnable           bool      `gorm:"type:bool"`
+	DeletePreviewMessages    bool      `gorm:"type:bool"`
 	AgroLevel                int       `gorm:"type:int"` // chance in percent of random interference
 	AgroCooldown             int       `gorm:"type:int"` // cooldown in minutes between random interference
 	BilledTo                 time.Time `gorm:"type:timestamp"`

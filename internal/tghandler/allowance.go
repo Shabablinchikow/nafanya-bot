@@ -26,3 +26,15 @@ func (h *Handler) checkChatExists(chat *tgbotapi.Chat) bool {
 
 	return idx != -1
 }
+
+func (h *Handler) isDeletePreview(chat *tgbotapi.Chat) bool {
+	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
+		return channel.ID == chat.ID
+	})
+
+	if idx == -1 {
+		return false
+	}
+
+	return h.chats[idx].DeletePreviewMessages
+}

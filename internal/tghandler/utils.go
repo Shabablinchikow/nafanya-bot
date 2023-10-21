@@ -153,6 +153,16 @@ func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
 	}
 }
 
+func (h *Handler) deleteMessage(update tgbotapi.Update) {
+	msg := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
+
+	_, err := h.bot.Send(msg)
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
 func (h *Handler) sendImageByURL(update tgbotapi.Update, url string) {
 	photo := tgbotapi.NewPhoto(update.Message.Chat.ID, tgbotapi.FileURL(url))
 	photo.ReplyToMessageID = update.Message.MessageID
@@ -178,7 +188,12 @@ func (h *Handler) isSupportedURL(update tgbotapi.Update) bool {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
 	for _, url := range urls {
-		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://instagram.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
+		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
+			if strings.Contains(url, "status") {
+				return true
+			}
+		}
+		if strings.Contains(url, "https://instagram.com") || strings.Contains(url, "https://www.instagram.com") {
 			return true
 		}
 	}
