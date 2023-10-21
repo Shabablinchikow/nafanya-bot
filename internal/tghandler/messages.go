@@ -118,6 +118,8 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatSetAgro(update)
 	case "chatSetAgroCooldown":
 		h.chatSetAgroCooldown(update)
+	case "chatSetPreviewDeletion":
+		h.chatSetPreviewDeletion(update)
 	}
 }
 
@@ -315,6 +317,8 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\nAgro cooldown: " + strconv.Itoa(chat.AgroCooldown) + "min" +
 			"\n/chatSetAgroCooldown <cooldown> - set agro cooldown (in minutes). Minimum is 10, max is 1440" +
 			"\nIf bot is restarted on server - cooldown will be reset, sorry" +
+			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
+			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -403,6 +407,43 @@ func (h *Handler) chatSetAgroCooldown(update tgbotapi.Update) {
 	}
 }
 
+func (h *Handler) chatSetPreviewDeletion(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		newDel, err := strconv.ParseBool(update.Message.CommandArguments())
+
+		if err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid agro format, use `true` or `false`")
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			_, err2 := h.bot.Send(msg)
+			if err2 != nil {
+				sentry.CaptureException(err2)
+				log.Println(err2)
+			}
+			return
+		}
+
+		chat, err3 := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err3 != nil {
+			sentry.CaptureException(err3)
+			log.Println(err3)
+			return
+		}
+
+		chat.DeletePreviewMessages = newDel
+		err4 := h.db.UpdateChannelConfig(chat)
+		if err4 != nil {
+			sentry.CaptureException(err4)
+			log.Println(err4)
+			return
+		}
+
+		h.reloadChannels()
+
+		h.sendMessage(update, "Done")
+	}
+}
+
 func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
@@ -413,24 +454,33 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://vxtwitter.com")
 			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://vxtwitter.com")
 
-			message := "Saved you a click:\n" + url
+			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
+			if h.isDeletePreview(update.Message.Chat) {
+				h.deleteMessage(update)
+			}
 		}
 		if strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			url = strings.ReplaceAll(url, "https://x.com", "https://vxtwitter.com")
 			url = strings.ReplaceAll(url, "https://www.x.com", "https://vxtwitter.com")
 
-			message := "Saved you a click:\n" + url
+			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
+			if h.isDeletePreview(update.Message.Chat) {
+				h.deleteMessage(update)
+			}
 		}
 		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
 			url = strings.ReplaceAll(url, "https://instagram.com", "https://ddinstagram.com")
 
-			message := "Saved you a click:\n" + url
+			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
+			if h.isDeletePreview(update.Message.Chat) {
+				h.deleteMessage(update)
+			}
 		}
 	}
 }

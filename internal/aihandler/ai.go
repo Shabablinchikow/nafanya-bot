@@ -49,7 +49,7 @@ func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
 		openai.ImageRequest{
 			Prompt:         prompt,
 			N:              1,
-			Size:           openai.CreateImageSize512x512,
+			Size:           openai.CreateImageSize1024x1024,
 			ResponseFormat: openai.CreateImageResponseFormatURL,
 		})
 	if err != nil {
