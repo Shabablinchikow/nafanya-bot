@@ -32,7 +32,7 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string) (string, er
 	resp, err := h.ai.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:    openai.GPT4,
+			Model:    openai.GPT4TurboPreview,
 			Messages: messages,
 		})
 	if err != nil {
@@ -51,6 +51,7 @@ func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
 			N:              1,
 			Size:           openai.CreateImageSize1024x1024,
 			ResponseFormat: openai.CreateImageResponseFormatURL,
+			Quality:        openai.CreateImageQualityHD,
 		})
 	if err != nil {
 		sentry.CaptureException(err)
