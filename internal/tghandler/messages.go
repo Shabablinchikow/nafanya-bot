@@ -120,6 +120,10 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatSetAgroCooldown(update)
 	case "chatSetPreviewDeletion":
 		h.chatSetPreviewDeletion(update)
+	case "chatUpdateQuestionPrompt":
+		h.chatUpdatePrompt(update, "question")
+	case "chatUpdateRandomPrompt":
+		h.chatUpdatePrompt(update, "random")
 	}
 }
 
@@ -311,6 +315,14 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 
 		message := "Chat: " +
 			chat.ChatName +
+			"\nid: " +
+			strconv.FormatInt(chat.ID, 10) +
+			"\n\nQuestion prompt: " +
+			chat.QuestionPrompt +
+			"\n/chatUpdateQuestionPrompt <prompt> (no more than 1000 symbols) - update question prompt" +
+			"\n\nRandom interference prompt: " +
+			chat.RandomInterferencePrompt +
+			"\n/chatUpdateRandomPrompt <prompt> (no more than 1000 symbols) - update random interference prompt" +
 			"\n\nAgro level: " + strconv.Itoa(chat.AgroLevel) + "%" +
 			"\n/chatSetAgro <level> - set agro level (chance in %)" +
 			"\n0 - disable agro" +
@@ -435,6 +447,41 @@ func (h *Handler) chatSetPreviewDeletion(update tgbotapi.Update) {
 		if err4 != nil {
 			sentry.CaptureException(err4)
 			log.Println(err4)
+			return
+		}
+
+		h.reloadChannels()
+
+		h.sendMessage(update, "Done")
+	}
+}
+
+func (h *Handler) chatUpdatePrompt(update tgbotapi.Update, typeOfPrompt string) {
+	if h.isChatAdmin(update) {
+		chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			return
+		}
+
+		if len(update.Message.CommandArguments()) > 1000 {
+			h.sendMessage(update, "Prompt is too long, max length is 1000 symbols")
+			return
+		} else if len(update.Message.CommandArguments()) < 10 {
+			h.sendMessage(update, "Prompt is too short, min length is 10 symbols")
+			return
+		}
+
+		if typeOfPrompt == "question" {
+			chat.QuestionPrompt = update.Message.CommandArguments()
+		} else {
+			chat.RandomInterferencePrompt = update.Message.CommandArguments()
+		}
+		err2 := h.db.UpdateChannelConfig(chat)
+		if err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
 			return
 		}
 
