@@ -32,7 +32,7 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string) (string, er
 	resp, err := h.ai.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:    openai.GPT4TurboPreview,
+			Model:    openai.GPT4,
 			Messages: messages,
 		})
 	if err != nil {
