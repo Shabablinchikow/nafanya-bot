@@ -140,7 +140,7 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
-				message = openAIErrorMessage + "\n```" + err.Error() + "```"
+				message = openAIErrorMessage + "\n```\n" + err.Error() + "\n```"
 			} else {
 				message = ans
 			}
@@ -158,7 +158,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
-				h.sendMessage(update, openAIErrorMessage+"\n```"+err.Error()+"```")
+				h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
 				return
 			}
 			h.sendImageByURL(update, url)
@@ -169,7 +169,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
-				message = openAIErrorMessage + "\n```" + err.Error() + "```"
+				message = openAIErrorMessage + "\n```\n" + err.Error() + "\n```"
 			} else {
 				message = ans
 			}
