@@ -8,7 +8,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/sashabaranov/go-openai v1.19.4
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	gorm.io/driver/postgres v1.5.6
+	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.7
 	mvdan.cc/xurls/v2 v2.5.0
 )
