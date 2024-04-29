@@ -6,7 +6,7 @@ require (
 	github.com/getsentry/sentry-go v0.27.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
-	github.com/sashabaranov/go-openai v1.20.5
+	github.com/sashabaranov/go-openai v1.23.0
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gorm.io/driver/postgres v1.5.7
 	gorm.io/gorm v1.25.9
