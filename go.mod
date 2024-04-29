@@ -9,7 +9,7 @@ require (
 	github.com/sashabaranov/go-openai v1.20.5
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
 	gorm.io/driver/postgres v1.5.7
-	gorm.io/gorm v1.25.9
+	gorm.io/gorm v1.25.10
 	mvdan.cc/xurls/v2 v2.5.0
 )
 
