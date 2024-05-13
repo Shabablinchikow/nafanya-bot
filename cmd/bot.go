@@ -17,6 +17,7 @@ import (
 	"time"
 )
 
+//nolint:funlen
 func main() {
 	// Load the config from the environment variables
 	config := cfg.LoadConfig()
@@ -43,8 +44,11 @@ func main() {
 	defer sentry.Flush(2 * time.Second)
 
 	aiOAI := openai.NewClient(config.OAIToken)
-	aiGoogle, err := genai.NewClient(context.Background(), option.WithAPIKey(config.GoogleToken))
-
+	aiGoogle, err2 := genai.NewClient(context.Background(), option.WithAPIKey(config.GoogleToken))
+	if err2 != nil {
+		sentry.CaptureException(err2)
+		log.Panic(err2)
+	}
 	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle)
 
 	dbDSN := "host=" + config.DBHost + " user=" + config.DBUser + " password=" + config.DBPass + " dbname=" + config.DBName + " port=" + config.DBPort + " sslmode=" + config.DBSSL
