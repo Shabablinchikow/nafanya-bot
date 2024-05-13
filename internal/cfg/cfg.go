@@ -8,7 +8,8 @@ import (
 
 type Cfg struct {
 	BotToken     string
-	AIToken      string
+	OAIToken     string
+	GoogleToken  string
 	DefaultAdmin int64
 
 	DBHost   string
@@ -28,7 +29,8 @@ func LoadConfig() Cfg {
 	var cfg Cfg
 
 	cfg.BotToken = fillEnv("BOT_TOKEN")
-	cfg.AIToken = fillEnv("AI_TOKEN")
+	cfg.OAIToken = fillEnv("AI_TOKEN")
+	cfg.GoogleToken = fillEnv("GEMINI_API_KEY")
 
 	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
 	if err != nil {

@@ -104,7 +104,7 @@ func rollEmotion() string {
 	return emotionList[n]
 }
 
-func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string) {
+func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string, model string) {
 	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
 		return channel.ID == id
 	})
@@ -130,7 +130,7 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 		prompt = strings.ReplaceAll(curChannel.RandomInterferencePrompt, "{emotion}", rollEmotion())
 	}
 
-	return prompt, userInput
+	return prompt, userInput, h.chats[idx].AIModel
 }
 
 func (h *Handler) reloadChannels() {

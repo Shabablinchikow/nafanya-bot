@@ -44,6 +44,8 @@ spec:
               value: "{{ .Values.secrets.db_sslmode }}"
             - name: SENTRY_DSN
               value: {{ .Values.secrets.sentry_dsn }}
+            - name: GEMINI_API_KEY
+              value: {{ .Values.secrets.gemini_api_key }}
           ports:
             - name: http
               containerPort: {{ .Values.service.internalPort }}

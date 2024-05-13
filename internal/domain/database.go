@@ -4,6 +4,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 )
 
 type Handler struct {
@@ -22,10 +23,13 @@ func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, e
 		panic(err2)
 	}
 
+	log.Println("Migrated")
+
 	// create default bot config if it doesn't exist
 	var rowCount int64
 	db.Find(&BotConfig{}).Count(&rowCount)
 	if rowCount == 0 {
+		log.Println("added admin")
 		db.Create(&BotConfig{
 			Admins: []int64{defaultAdmin},
 		})
