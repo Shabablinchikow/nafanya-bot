@@ -125,6 +125,8 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatUpdatePrompt(update, "question")
 	case "chatUpdateRandomPrompt":
 		h.chatUpdatePrompt(update, "random")
+	case "chatUpdateModel":
+		h.chatUpdateModel(update)
 	}
 }
 
@@ -332,6 +334,8 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\nIf bot is restarted on server - cooldown will be reset, sorry" +
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
+			"\n\nAI model: " + chat.AIModel +
+			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google`" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -479,6 +483,35 @@ func (h *Handler) chatUpdatePrompt(update tgbotapi.Update, typeOfPrompt string) 
 		} else {
 			chat.RandomInterferencePrompt = update.Message.CommandArguments()
 		}
+		err2 := h.db.UpdateChannelConfig(chat)
+		if err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
+			return
+		}
+
+		h.reloadChannels()
+
+		h.sendMessage(update, "Done")
+	}
+}
+
+func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			return
+		}
+
+		if update.Message.CommandArguments() == "oai" || update.Message.CommandArguments() == "google" {
+			chat.AIModel = update.Message.CommandArguments()
+		} else {
+			h.sendMessage(update, "Invalid model, use `oai` or `google`")
+			return
+		}
+
 		err2 := h.db.UpdateChannelConfig(chat)
 		if err2 != nil {
 			sentry.CaptureException(err2)
