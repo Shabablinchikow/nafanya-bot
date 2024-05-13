@@ -1,10 +1,10 @@
 package aihandler
 
 import (
+	"cloud.google.com/go/vertexai/genai"
 	"context"
 	"fmt"
 	"github.com/getsentry/sentry-go"
-	"github.com/google/generative-ai-go/genai"
 	"github.com/sashabaranov/go-openai"
 	"log"
 )
@@ -58,9 +58,8 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string,
 
 	return resp.Choices[0].Message.Content, nil
 }
-
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string) (string, error) {
-	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-latest")
+	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-preview-0409")
 
 	var safetySettings []*genai.SafetySetting
 	safetySettings = append(safetySettings, &genai.SafetySetting{

@@ -1,6 +1,7 @@
 package cfg
 
 import (
+	"encoding/base64"
 	"github.com/getsentry/sentry-go"
 	"os"
 	"strconv"
@@ -28,9 +29,16 @@ type Cfg struct {
 func LoadConfig() Cfg {
 	var cfg Cfg
 
+	token, err := base64.StdEncoding.DecodeString(fillEnv("GEMINI_API_KEY"))
+	if err != nil {
+		sentry.CaptureException(err)
+		panic(err)
+
+	}
+
 	cfg.BotToken = fillEnv("BOT_TOKEN")
 	cfg.OAIToken = fillEnv("AI_TOKEN")
-	cfg.GoogleToken = fillEnv("GEMINI_API_KEY")
+	cfg.GoogleToken = string(token)
 
 	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
 	if err != nil {

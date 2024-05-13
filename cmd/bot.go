@@ -1,10 +1,10 @@
 package main
 
 import (
+	"cloud.google.com/go/vertexai/genai"
 	"context"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/generative-ai-go/genai"
 	"github.com/sashabaranov/go-openai"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
@@ -44,7 +44,7 @@ func main() {
 	defer sentry.Flush(2 * time.Second)
 
 	aiOAI := openai.NewClient(config.OAIToken)
-	aiGoogle, err2 := genai.NewClient(context.Background(), option.WithAPIKey(config.GoogleToken))
+	aiGoogle, err2 := genai.NewClient(context.Background(), "gnomed-1695577860628", "europe-west3", option.WithCredentialsJSON([]byte(config.GoogleToken)))
 	if err2 != nil {
 		sentry.CaptureException(err2)
 		log.Panic(err2)
