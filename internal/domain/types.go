@@ -28,6 +28,7 @@ type Chat struct {
 	AgroLevel                int       `gorm:"type:int"` // chance in percent of random interference
 	AgroCooldown             int       `gorm:"type:int"` // cooldown in minutes between random interference
 	BilledTo                 time.Time `gorm:"type:timestamp"`
+	AIModel                  string    `gorm:"type:text"`
 }
 
 type BotConfig struct {

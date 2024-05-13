@@ -1,15 +1,15 @@
 version: "3.9"
 services:
-  db:
+  db_nafanya:
     image: postgres:14.1-alpine
     restart: always
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - '5432:5432'
+      - '5433:5432'
     volumes:
-      - db:/var/lib/postgresql/data
+      - db_nafanya:/var/lib/postgresql/data
   bot:
     container_name: nafanya-bot
     build:
@@ -24,17 +24,18 @@ services:
       - SYS_PTRACE
     command: ./dlv --listen=:40000 --headless=true --api-version=2 --accept-multiclient exec /nafanya-bot
     depends_on:
-      - db
+      - db_nafanya
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      DB_HOST: db_nafanya
+      DB_PORT: 5433
       DB_USER: postgres
       DB_PASS: postgres
       DB_NAME: postgres
       AI_TOKEN: ${AI_TOKEN}
       BOT_TOKEN: ${BOT_TOKEN}
       SENTRY_DSN: ${SENTRY_DSN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       DEBUG_MODE: true
 volumes:
-  db:
+  db_nafanya:
     driver: local

@@ -83,6 +83,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 
 			channel.ID = update.Message.Chat.ID
 			channel.Type = update.Message.Chat.Type
+			channel.AIModel = "oai"
 			if update.Message.Chat.Type == "private" {
 				channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
 			} else {

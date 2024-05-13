@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/generative-ai-go/genai"
 	"github.com/sashabaranov/go-openai"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"github.com/shabablinchikow/nafanya-bot/internal/tghandler"
+	"google.golang.org/api/option"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 	"log"
@@ -39,8 +42,10 @@ func main() {
 	defer sentry.Recover()
 	defer sentry.Flush(2 * time.Second)
 
-	ai := openai.NewClient(config.AIToken)
-	aiHndlr := aihandler.NewHandler(ai)
+	aiOAI := openai.NewClient(config.OAIToken)
+	aiGoogle, err := genai.NewClient(context.Background(), option.WithAPIKey(config.GoogleToken))
+
+	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle)
 
 	dbDSN := "host=" + config.DBHost + " user=" + config.DBUser + " password=" + config.DBPass + " dbname=" + config.DBName + " port=" + config.DBPort + " sslmode=" + config.DBSSL
 	dbConfig := &gorm.Config{
