@@ -47,8 +47,9 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string,
 	resp, err := h.aiOAI.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:    openai.GPT4TurboPreview,
-			Messages: messages,
+			Model:     openai.GPT4o,
+			Messages:  messages,
+			MaxTokens: 2000,
 		})
 	if err != nil {
 		sentry.CaptureException(err)
@@ -83,6 +84,10 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string) (stri
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(prompt)},
 	}
+
+	model.SetMaxOutputTokens(2000)
+	model.SetCandidateCount(1)
+
 	resp, err := model.GenerateContent(context.Background(), genai.Text(userInput))
 	if err != nil {
 		log.Println("Error generating content:", err)
