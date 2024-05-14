@@ -41,6 +41,10 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 		panic(err2)
 	}
 
+	google, oai := db.GetMaxTokens()
+	config.GoogleMaxTokens = google
+	config.OAIMaxTokens = oai
+
 	return &Handler{
 		bot:       bot,
 		ai:        ai,
