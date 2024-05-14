@@ -49,7 +49,7 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string,
 		openai.ChatCompletionRequest{
 			Model:     openai.GPT4o,
 			Messages:  messages,
-			MaxTokens: 2000,
+			MaxTokens: 1000,
 		})
 	if err != nil {
 		sentry.CaptureException(err)
