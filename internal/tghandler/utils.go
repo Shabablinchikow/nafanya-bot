@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"mvdan.cc/xurls/v2"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,7 +21,9 @@ const (
 )
 
 type chatCache struct {
-	lastRand time.Time
+	lastRand        time.Time
+	GoogleMaxTokens int
+	OAIMaxTokens    int
 }
 
 // emotionList is a list of strings containing all available emotions
@@ -104,7 +107,7 @@ func rollEmotion() string {
 	return emotionList[n]
 }
 
-func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string, model string) {
+func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string, model string, maxTokens int) {
 	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
 		return channel.ID == id
 	})
@@ -130,7 +133,7 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 		prompt = strings.ReplaceAll(curChannel.RandomInterferencePrompt, "{emotion}", rollEmotion())
 	}
 
-	return prompt, userInput, h.chats[idx].AIModel
+	return prompt, userInput, h.chats[idx].AIModel, h.config.GoogleMaxTokens
 }
 
 func (h *Handler) reloadChannels() {
@@ -198,4 +201,23 @@ func (h *Handler) isSupportedURL(update tgbotapi.Update) bool {
 		}
 	}
 	return false
+}
+
+func (h *Handler) updateMaxTokens(update tgbotapi.Update) {
+	if h.isAdmin(update.Message.From.ID) {
+		tokens, err := strconv.Atoi(update.Message.CommandArguments())
+		if err != nil {
+			h.sendMessage(update, "Invalid number")
+			return
+		}
+		err2 := h.db.UpdateMaxTokens(tokens)
+		if err2 != nil {
+			h.sendMessage(update, "Error updating max tokens")
+			return
+		}
+		h.sendMessage(update, "Max tokens updated")
+		return
+	}
+
+	h.sendMessage(update, "You are not an admin")
 }

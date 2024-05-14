@@ -21,18 +21,18 @@ func NewHandler(oai *openai.Client, googleAI *genai.Client) *Handler {
 	}
 }
 
-func (h *Handler) GetPromptResponse(prompt string, userInput string, model string) (string, error) {
+func (h *Handler) GetPromptResponse(prompt string, userInput string, model string, maxTokens int) (string, error) {
 	switch model {
 	case "oai":
-		return h.GetPromptResponseOAI(prompt, userInput)
+		return h.GetPromptResponseOAI(prompt, userInput, maxTokens)
 	case "google":
-		return h.GetPromptResponseGoogle(prompt, userInput)
+		return h.GetPromptResponseGoogle(prompt, userInput, maxTokens)
 	}
 
 	return "", fmt.Errorf("unknown model: %s", model)
 }
 
-func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string, error) {
+func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {
 	messages := make([]openai.ChatCompletionMessage, 0)
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
@@ -49,7 +49,7 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string,
 		openai.ChatCompletionRequest{
 			Model:     openai.GPT4o,
 			Messages:  messages,
-			MaxTokens: 1000,
+			MaxTokens: maxTokens,
 		})
 	if err != nil {
 		sentry.CaptureException(err)
@@ -59,7 +59,7 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string) (string,
 
 	return resp.Choices[0].Message.Content, nil
 }
-func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string) (string, error) {
+func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
 	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-preview-0409")
 
 	var safetySettings []*genai.SafetySetting
@@ -85,7 +85,7 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string) (stri
 		Parts: []genai.Part{genai.Text(prompt)},
 	}
 
-	model.SetMaxOutputTokens(2000)
+	model.SetMaxOutputTokens(int32(maxTokens))
 	model.SetCandidateCount(1)
 
 	resp, err := model.GenerateContent(context.Background(), genai.Text(userInput))

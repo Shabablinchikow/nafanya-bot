@@ -81,3 +81,28 @@ func (h *Handler) AddAdmin(id int64) error {
 	currentConfig.Admins = append(currentConfig.Admins, id)
 	return h.db.Updates(&currentConfig).Error
 }
+
+func (h *Handler) GetMaxTokens() (GoogleMaxTokens int, OAIMaxTokens int) {
+	var botConfig BotConfig
+	err := h.db.First(&botConfig).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		return 0, 0
+	}
+
+	return botConfig.GoogleMaxTokens, botConfig.OAIMaxTokens
+}
+
+func (h *Handler) UpdateMaxTokens(maxTokens int) error {
+	var botConfig BotConfig
+	err := h.db.First(&botConfig).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		return err
+	}
+
+	botConfig.GoogleMaxTokens = maxTokens
+	botConfig.OAIMaxTokens = maxTokens
+
+	return h.db.Save(&botConfig).Error
+}

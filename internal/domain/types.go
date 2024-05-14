@@ -33,7 +33,9 @@ type Chat struct {
 
 type BotConfig struct {
 	gorm.Model
-	Admins pq.Int64Array `gorm:"type:bigint[]"`
+	Admins          pq.Int64Array `gorm:"type:bigint[]"`
+	GoogleMaxTokens int           `gorm:"type:int"`
+	OAIMaxTokens    int           `gorm:"type:int"`
 }
 
 func GetDefaultChat() Chat {

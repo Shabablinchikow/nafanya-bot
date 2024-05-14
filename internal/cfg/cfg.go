@@ -33,7 +33,6 @@ func LoadConfig() Cfg {
 	if err != nil {
 		sentry.CaptureException(err)
 		panic(err)
-
 	}
 
 	cfg.BotToken = fillEnv("BOT_TOKEN")

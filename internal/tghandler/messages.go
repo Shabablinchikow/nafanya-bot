@@ -127,6 +127,8 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatUpdatePrompt(update, "random")
 	case "chatUpdateModel":
 		h.chatUpdateModel(update)
+	case "updateMaxTokens":
+		h.updateMaxTokens(update)
 	}
 }
 
