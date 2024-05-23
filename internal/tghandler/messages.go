@@ -171,7 +171,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 				return
 			}
 			h.sendImageByURL(update, url)
-		} else {
+		} else if !h.checkIfURLReply(update) {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			var message string
 			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))

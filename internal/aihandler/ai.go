@@ -60,24 +60,24 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxToken
 	return resp.Choices[0].Message.Content, nil
 }
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
-	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-preview-0409")
+	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-preview-0514")
 
 	var safetySettings []*genai.SafetySetting
 	safetySettings = append(safetySettings, &genai.SafetySetting{
 		Category:  genai.HarmCategoryHarassment,
-		Threshold: genai.HarmBlockNone,
+		Threshold: genai.HarmBlockOnlyHigh,
 	})
 	safetySettings = append(safetySettings, &genai.SafetySetting{
 		Category:  genai.HarmCategoryHateSpeech,
-		Threshold: genai.HarmBlockNone,
+		Threshold: genai.HarmBlockOnlyHigh,
 	})
 	safetySettings = append(safetySettings, &genai.SafetySetting{
 		Category:  genai.HarmCategorySexuallyExplicit,
-		Threshold: genai.HarmBlockNone,
+		Threshold: genai.HarmBlockOnlyHigh,
 	})
 	safetySettings = append(safetySettings, &genai.SafetySetting{
 		Category:  genai.HarmCategoryDangerousContent,
-		Threshold: genai.HarmBlockNone,
+		Threshold: genai.HarmBlockOnlyHigh,
 	})
 
 	model.SafetySettings = safetySettings
@@ -101,7 +101,7 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 				log.Println("safety: " + safe.Category.String() + safe.Probability.String())
 			}
 		}
-		return "", err
+		return "Error generating answer: " + err.Error(), err
 	}
 
 	var respText string

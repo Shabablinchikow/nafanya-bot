@@ -221,3 +221,11 @@ func (h *Handler) updateMaxTokens(update tgbotapi.Update) {
 
 	h.sendMessage(update, "You are not an admin")
 }
+
+func (h *Handler) checkIfURLReply(update tgbotapi.Update) bool {
+	if strings.Contains(update.Message.ReplyToMessage.Text, "Saved") && strings.Contains(update.Message.ReplyToMessage.Text, "a click:") {
+		return true
+	}
+
+	return false
+}
