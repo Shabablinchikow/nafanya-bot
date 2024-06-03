@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	cloud.google.com/go/vertexai v0.9.0
-	github.com/getsentry/sentry-go v0.27.0
+	github.com/getsentry/sentry-go v0.28.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
 	github.com/sashabaranov/go-openai v1.24.0
