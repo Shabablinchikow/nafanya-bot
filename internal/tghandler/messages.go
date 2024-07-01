@@ -537,9 +537,9 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 	for _, url := range urls {
 		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://mobile.twitter.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
-			url = strings.ReplaceAll(url, "https://twitter.com", "https://vxtwitter.com")
-			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://vxtwitter.com")
-			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://twitter.com", "https://fxtwitter.com")
+			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://fxtwitter.com")
+			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://fxtwitter.com")
 
 			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
@@ -549,8 +549,8 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 		}
 		if strings.Contains(url, "https://x.com") || strings.Contains(url, "https://www.x.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
-			url = strings.ReplaceAll(url, "https://x.com", "https://vxtwitter.com")
-			url = strings.ReplaceAll(url, "https://www.x.com", "https://vxtwitter.com")
+			url = strings.ReplaceAll(url, "https://x.com", "https://fxtwitter.com")
+			url = strings.ReplaceAll(url, "https://www.x.com", "https://fxtwitter.com")
 
 			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
