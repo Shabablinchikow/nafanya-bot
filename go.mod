@@ -3,7 +3,7 @@ module github.com/shabablinchikow/nafanya-bot
 go 1.21
 
 require (
-	cloud.google.com/go/vertexai v0.12.0
+	cloud.google.com/go/vertexai v0.13.2
 	github.com/getsentry/sentry-go v0.29.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
