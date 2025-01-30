@@ -1,7 +1,8 @@
 module github.com/shabablinchikow/nafanya-bot
 
-go 1.21
-toolchain go1.22.5
+go 1.22
+
+toolchain go1.23.5
 
 require (
 	cloud.google.com/go/vertexai v0.13.3
