@@ -11,6 +11,7 @@ type Cfg struct {
 	BotToken     string
 	OAIToken     string
 	GoogleToken  string
+	DSToken      string
 	DefaultAdmin int64
 
 	DBHost   string
@@ -37,6 +38,7 @@ func LoadConfig() Cfg {
 
 	cfg.BotToken = fillEnv("BOT_TOKEN")
 	cfg.OAIToken = fillEnv("AI_TOKEN")
+	cfg.DSToken = getEnv("DS_TOKEN", "")
 	cfg.GoogleToken = string(token)
 
 	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
