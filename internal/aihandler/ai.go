@@ -11,13 +11,15 @@ import (
 
 type Handler struct {
 	aiOAI    *openai.Client
+	deepSeek *openai.Client
 	aiGoogle *genai.Client
 }
 
-func NewHandler(oai *openai.Client, googleAI *genai.Client) *Handler {
+func NewHandler(oai *openai.Client, googleAI *genai.Client, deep *openai.Client) *Handler {
 	return &Handler{
 		aiOAI:    oai,
 		aiGoogle: googleAI,
+		deepSeek: deep,
 	}
 }
 
@@ -25,6 +27,8 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 	switch model {
 	case "oai":
 		return h.GetPromptResponseOAI(prompt, userInput, maxTokens)
+	case "deepseek":
+		return h.GetPromptResponseDS(prompt, userInput, maxTokens)
 	case "google":
 		return h.GetPromptResponseGoogle(prompt, userInput, maxTokens)
 	}
@@ -33,6 +37,17 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 }
 
 func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {
+	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, openai.GPT4o)
+}
+
+func (h *Handler) GetPromptResponseDS(prompt string, userInput string, maxTokens int) (string, error) {
+	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, "deepseek-chat")
+}
+
+func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt string, userInput string, maxTokens int, model string) (string, error) {
+	if client == nil {
+		return "", fmt.Errorf("model not available")
+	}
 	messages := make([]openai.ChatCompletionMessage, 0)
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
@@ -44,10 +59,10 @@ func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxToken
 		Content: userInput,
 	})
 
-	resp, err := h.aiOAI.CreateChatCompletion(
+	resp, err := client.CreateChatCompletion(
 		context.Background(),
 		openai.ChatCompletionRequest{
-			Model:     openai.GPT4o,
+			Model:     model,
 			Messages:  messages,
 			MaxTokens: maxTokens,
 		})

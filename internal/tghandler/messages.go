@@ -341,7 +341,7 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
-			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google`" +
+			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google` or `deepseek`" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -511,10 +511,10 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 			return
 		}
 
-		if update.Message.CommandArguments() == "oai" || update.Message.CommandArguments() == "google" {
+		if update.Message.CommandArguments() == "oai" || update.Message.CommandArguments() == "google" || update.Message.CommandArguments() == "deepseek" {
 			chat.AIModel = update.Message.CommandArguments()
 		} else {
-			h.sendMessage(update, "Invalid model, use `oai` or `google`")
+			h.sendMessage(update, "Invalid model, use `oai` or `google` or `deepseek`")
 			return
 		}
 

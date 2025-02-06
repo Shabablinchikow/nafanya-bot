@@ -44,12 +44,19 @@ func main() {
 	defer sentry.Flush(2 * time.Second)
 
 	aiOAI := openai.NewClient(config.OAIToken)
+	var dsAI *openai.Client
+
+	if config.DSToken != "" {
+		config := openai.DefaultConfig(config.DSToken)
+		config.BaseURL = "https://api.deepseek.com"
+		dsAI = openai.NewClientWithConfig(config)
+	}
 	aiGoogle, err2 := genai.NewClient(context.Background(), "gnomed-1695577860628", "europe-west3", option.WithCredentialsJSON([]byte(config.GoogleToken)))
 	if err2 != nil {
 		sentry.CaptureException(err2)
 		log.Panic(err2)
 	}
-	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle)
+	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle, dsAI)
 
 	dbDSN := "host=" + config.DBHost + " user=" + config.DBUser + " password=" + config.DBPass + " dbname=" + config.DBName + " port=" + config.DBPort + " sslmode=" + config.DBSSL
 	dbConfig := &gorm.Config{
