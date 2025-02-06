@@ -1,8 +1,11 @@
 package main
 
 import (
-	"cloud.google.com/go/vertexai/genai"
 	"context"
+	"log"
+	"time"
+
+	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/sashabaranov/go-openai"
@@ -13,8 +16,6 @@ import (
 	"google.golang.org/api/option"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"log"
-	"time"
 )
 
 //nolint:funlen
@@ -89,6 +90,6 @@ func main() {
 	handler := tghandler.NewHandler(bot, aiHndlr, db)
 
 	for update := range updates {
-		handler.HandleEvents(update)
+		go handler.HandleEvents(update)
 	}
 }
