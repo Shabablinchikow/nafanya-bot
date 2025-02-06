@@ -47,7 +47,7 @@ spec:
             - name: GEMINI_API_KEY
               value: {{ .Values.secrets.gemini_api_key }}
             - name: DS_TOKEN
-              {{ .Values.secrets.ds_token }}
+              value: {{ .Values.secrets.ds_token }}
           ports:
             - name: http
               containerPort: {{ .Values.service.internalPort }}
