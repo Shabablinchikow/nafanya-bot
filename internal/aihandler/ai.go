@@ -1,12 +1,13 @@
 package aihandler
 
 import (
-	"cloud.google.com/go/vertexai/genai"
 	"context"
 	"fmt"
+	"log"
+
+	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
 	"github.com/sashabaranov/go-openai"
-	"log"
 )
 
 type Handler struct {
@@ -75,7 +76,7 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 	return resp.Choices[0].Message.Content, nil
 }
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
-	model := h.aiGoogle.GenerativeModel("gemini-1.5-pro-preview-0514")
+	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-thinking-exp-01-21")
 
 	var safetySettings []*genai.SafetySetting
 	safetySettings = append(safetySettings, &genai.SafetySetting{
