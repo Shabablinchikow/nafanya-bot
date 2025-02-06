@@ -76,7 +76,7 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 	return resp.Choices[0].Message.Content, nil
 }
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
-	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-thinking-exp-01-21")
+	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-001")
 
 	var safetySettings []*genai.SafetySetting
 	safetySettings = append(safetySettings, &genai.SafetySetting{
