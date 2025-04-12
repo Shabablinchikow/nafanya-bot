@@ -560,8 +560,8 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 		}
 		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
-			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://ddinstagram.com")
-			url = strings.ReplaceAll(url, "https://instagram.com", "https://ddinstagram.com")
+			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://kkinstagram.com")
+			url = strings.ReplaceAll(url, "https://instagram.com", "https://kkinstagram.com")
 
 			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
 			h.sendMessage(update, message)
