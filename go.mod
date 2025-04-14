@@ -6,7 +6,7 @@ toolchain go1.23.5
 
 require (
 	cloud.google.com/go/vertexai v0.13.3
-	github.com/getsentry/sentry-go v0.31.1
+	github.com/getsentry/sentry-go v0.32.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
 	github.com/sashabaranov/go-openai v1.37.0
@@ -37,6 +37,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.58.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.58.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
