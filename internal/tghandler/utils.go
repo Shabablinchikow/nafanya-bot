@@ -75,7 +75,7 @@ func (h *Handler) isItTime(chat int64) bool {
 }
 
 func (h *Handler) isPersonal(update tgbotapi.Update) bool {
-	if strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня") {
+	if strings.HasPrefix(update.Message.Text, "Нафаня") || strings.HasPrefix(update.Message.Text, "нафаня") || strings.HasPrefix(update.Message.Text, "@grok") {
 		return true
 	} else if update.Message.ReplyToMessage != nil && !h.checkIfURLReply(update) {
 		return update.Message.ReplyToMessage.From.ID == h.bot.Self.ID
