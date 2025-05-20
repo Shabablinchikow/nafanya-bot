@@ -13,7 +13,7 @@ require (
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	google.golang.org/api v0.220.0
 	gorm.io/driver/postgres v1.5.11
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.26.1
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
