@@ -78,15 +78,9 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
 	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-001")
 
-	// Enable Google Search grounding
-	searchTool := &genai.Tool{
-		GoogleSearchRetrieval: &genai.GoogleSearchRetrieval{},
-	}
-	model.Tools = []*genai.Tool{searchTool}
-	log.Printf("Model tools configured: %+v\n", model.Tools)
-	if len(model.Tools) > 0 && model.Tools[0].GoogleSearchRetrieval != nil {
-		log.Println("GoogleSearchRetrieval tool is configured.")
-	}
+	// Note: Explicit Google Search tool configuration was attempted but removed due to SDK version incompatibility.
+	// The model may use default grounding if available; check citation logs.
+	log.Println("Note: Explicit Google Search tool configuration was attempted but removed due to SDK version incompatibility. The model may use default grounding if available; check citation logs.")
 
 	var safetySettings []*genai.SafetySetting
 	safetySettings = append(safetySettings, &genai.SafetySetting{
@@ -136,12 +130,12 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 		log.Printf("Candidate FinishReason: %s\n", cand.FinishReason.String())
 		if cand.CitationMetadata != nil {
 			log.Println("CitationMetadata found:")
-			if len(cand.CitationMetadata.CitationSources) > 0 {
-				for _, source := range cand.CitationMetadata.CitationSources {
+			if len(cand.CitationMetadata.Citations) > 0 {
+				for _, source := range cand.CitationMetadata.Citations {
 					log.Printf("  Citation Source URI: %s, StartIndex: %d, EndIndex: %d, License: %s\n", source.URI, source.StartIndex, source.EndIndex, source.License)
 				}
 			} else {
-				log.Println("  No citation sources found in metadata.")
+				log.Println("  No citations found in metadata.")
 			}
 		} else {
 			log.Println("No CitationMetadata found for candidate.")
