@@ -20,6 +20,8 @@ const (
 	RandomInterference = 2
 )
 
+const Serious = 6
+
 type chatCache struct {
 	lastRand        time.Time
 	GoogleMaxTokens int
@@ -34,6 +36,7 @@ var emotionList = []string{
 	"с сарказмом",
 	"с раздражением",
 	"с жестким негативом",
+	"с серьезным отношением",
 }
 
 func (h *Handler) isItTime(chat int64) bool {
@@ -88,7 +91,10 @@ func isDraw(update tgbotapi.Update) bool {
 		return true
 	}
 	return false
+}
 
+func isSerious(update tgbotapi.Update) bool {
+	return strings.Contains(update.Message.Text, "серьезно")
 }
 
 func getCleanDrawPrompt(update string) string {
@@ -107,7 +113,7 @@ func rollEmotion() string {
 	return emotionList[n]
 }
 
-func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update) (prompt string, userInput string, model string, maxTokens int) {
+func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Update, serious bool) (prompt string, userInput string, model string, maxTokens int) {
 	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
 		return channel.ID == id
 	})
@@ -128,7 +134,13 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 
 	switch promptType {
 	case Question:
-		prompt = strings.ReplaceAll(curChannel.QuestionPrompt, "{emotion}", rollEmotion())
+		var emotion string
+		if serious {
+			emotion = emotionList[Serious]
+		} else {
+			emotion = rollEmotion()
+		}
+		prompt = strings.ReplaceAll(curChannel.QuestionPrompt, "{emotion}", emotion)
 	case RandomInterference:
 		prompt = strings.ReplaceAll(curChannel.RandomInterferencePrompt, "{emotion}", rollEmotion())
 	}

@@ -145,7 +145,7 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 		if h.checkAllowed(update.Message.Chat.ID) {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			var message string
-			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update, false))
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
@@ -173,8 +173,9 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 			h.sendImageByURL(update, url)
 		} else {
 			h.sendAction(update, tgbotapi.ChatTyping)
+			serious := isSerious(update)
 			var message string
-			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update, serious))
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
