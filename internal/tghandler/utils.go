@@ -20,7 +20,7 @@ const (
 	RandomInterference = 2
 )
 
-const Serious = 6
+const Serious = "с серьезным отношением"
 
 type chatCache struct {
 	lastRand        time.Time
@@ -36,7 +36,6 @@ var emotionList = []string{
 	"с сарказмом",
 	"с раздражением",
 	"с жестким негативом",
-	"с серьезным отношением",
 }
 
 func (h *Handler) isItTime(chat int64) bool {
@@ -136,7 +135,7 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 	case Question:
 		var emotion string
 		if serious {
-			emotion = emotionList[Serious]
+			emotion = Serious
 		} else {
 			emotion = rollEmotion()
 		}
