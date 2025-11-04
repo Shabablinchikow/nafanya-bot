@@ -59,6 +59,7 @@ func (h *Handler) isItTime(chat int64) bool {
 	}
 	n := nBig.Int64()
 
+	h.chatCacheMux.Lock()
 	if _, ok := h.chatCache[chat]; !ok {
 		newCache := chatCache{lastRand: time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)}
 		h.chatCache[chat] = newCache
@@ -67,9 +68,14 @@ func (h *Handler) isItTime(chat int64) bool {
 	agroLevel := int64(h.chats[idx].AgroLevel)
 	cooldown := time.Duration(h.chats[idx].AgroCooldown)
 
-	if n > (100-agroLevel) && time.Since(h.chatCache[chat].lastRand) > (cooldown*time.Minute) {
+	lastRand := h.chatCache[chat].lastRand
+	h.chatCacheMux.Unlock()
+
+	if n > (100-agroLevel) && time.Since(lastRand) > (cooldown*time.Minute) {
+		h.chatCacheMux.Lock()
 		newCache := chatCache{lastRand: time.Now()}
 		h.chatCache[chat] = newCache
+		h.chatCacheMux.Unlock()
 		return true
 	}
 
@@ -144,7 +150,15 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 		prompt = strings.ReplaceAll(curChannel.RandomInterferencePrompt, "{emotion}", rollEmotion())
 	}
 
-	return prompt, userInput, h.chats[idx].AIModel, h.config.GoogleMaxTokens
+	// Return correct max tokens based on model
+	aiModel := h.chats[idx].AIModel
+	if aiModel == "google" {
+		maxTokens = h.config.GoogleMaxTokens
+	} else {
+		maxTokens = h.config.OAIMaxTokens
+	}
+
+	return prompt, userInput, aiModel, maxTokens
 }
 
 func (h *Handler) reloadChannels() {

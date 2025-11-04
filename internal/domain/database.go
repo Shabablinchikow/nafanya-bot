@@ -27,7 +27,7 @@ func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, e
 
 	// create default bot config if it doesn't exist
 	var rowCount int64
-	db.Find(&BotConfig{}).Count(&rowCount)
+	db.Model(&BotConfig{}).Count(&rowCount)
 	if rowCount == 0 {
 		log.Println("added admin")
 		db.Create(&BotConfig{
