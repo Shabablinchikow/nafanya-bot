@@ -13,16 +13,18 @@ import (
 	"mvdan.cc/xurls/v2"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Handler struct {
-	bot       *tgbotapi.BotAPI
-	ai        *aihandler.Handler
-	db        *domain.Handler
-	chats     []domain.Chat
-	config    domain.BotConfig
-	chatCache map[int64]chatCache
+	bot          *tgbotapi.BotAPI
+	ai           *aihandler.Handler
+	db           *domain.Handler
+	chats        []domain.Chat
+	config       domain.BotConfig
+	chatCache    map[int64]chatCache
+	chatCacheMux sync.RWMutex
 }
 
 const (
@@ -81,7 +83,6 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				h.randomInterference(update)
 				span.Finish()
 			}
-			ctx.Done()
 		} else {
 			channel := domain.GetDefaultChat()
 
@@ -195,11 +196,13 @@ func (h *Handler) listChats(update tgbotapi.Update) {
 		var message string
 		for _, chat := range h.chats {
 			var lastRand string
+			h.chatCacheMux.RLock()
 			if val, ok := h.chatCache[chat.ID]; !ok {
 				lastRand = "never"
 			} else {
 				lastRand = val.lastRand.Format("2006-01-02 15:04:05")
 			}
+			h.chatCacheMux.RUnlock()
 			message += "/chat " + strconv.FormatInt(chat.ID, 10) +
 				"\nChat: " + chat.ChatName +
 				"\nType: " + chat.Type +
@@ -436,7 +439,7 @@ func (h *Handler) chatSetPreviewDeletion(update tgbotapi.Update) {
 		newDel, err := strconv.ParseBool(update.Message.CommandArguments())
 
 		if err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid agro format, use `true` or `false`")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid preview deletion format, use `true` or `false`")
 			msg.ReplyToMessageID = update.Message.MessageID
 
 			_, err2 := h.bot.Send(msg)

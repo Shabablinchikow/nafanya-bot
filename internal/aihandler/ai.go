@@ -73,6 +73,12 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 		return "", err
 	}
 
+	if len(resp.Choices) == 0 {
+		err := fmt.Errorf("no choices returned from API")
+		sentry.CaptureException(err)
+		return "", err
+	}
+
 	return resp.Choices[0].Message.Content, nil
 }
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
@@ -107,14 +113,16 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 	resp, err := model.GenerateContent(context.Background(), genai.Text(userInput))
 	if err != nil {
 		log.Println("Error generating content:", err)
-		for _, cand := range resp.Candidates {
-			reason := cand.FinishReason
-			reasonString := reason.String()
+		if resp != nil {
+			for _, cand := range resp.Candidates {
+				reason := cand.FinishReason
+				reasonString := reason.String()
 
-			log.Println("reason: " + reasonString)
+				log.Println("reason: " + reasonString)
 
-			for _, safe := range cand.SafetyRatings {
-				log.Println("safety: " + safe.Category.String() + safe.Probability.String())
+				for _, safe := range cand.SafetyRatings {
+					log.Println("safety: " + safe.Category.String() + safe.Probability.String())
+				}
 			}
 		}
 		return "Error generating answer: " + err.Error(), err
@@ -146,6 +154,12 @@ func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println("Image error:", err)
+		return "", err
+	}
+
+	if len(img.Data) == 0 {
+		err := fmt.Errorf("no image data returned from API")
+		sentry.CaptureException(err)
 		return "", err
 	}
 
