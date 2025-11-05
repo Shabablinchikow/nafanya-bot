@@ -125,16 +125,44 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 
 	curChannel := h.chats[idx]
 
-	userInput = update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + update.Message.Text
+	var quotedText string
+	var userMessage string
 
-	nextMess := update.Message.ReplyToMessage
+	// Check if the message is a reply and contains a quote
+	if update.Message.ReplyToMessage != nil {
+		var isQuote bool
+		lines := strings.Split(update.Message.Text, "\n")
+		var quoteLines []string
+		var messageLines []string
 
-	if nextMess != nil {
-		if !nextMess.From.IsBot {
-			userInput = nextMess.From.FirstName + " " + nextMess.From.LastName + ": " + nextMess.Text + "\n" + userInput
-		} else {
-			userInput = nextMess.From.FirstName + ": " + nextMess.Text + "\n" + userInput
+		for _, line := range lines {
+			if strings.HasPrefix(line, ">") {
+				quoteLines = append(quoteLines, strings.TrimPrefix(line, "> "))
+				isQuote = true
+			} else {
+				messageLines = append(messageLines, line)
+			}
 		}
+
+		if isQuote {
+			quotedText = strings.Join(quoteLines, "\n")
+			userMessage = strings.Join(messageLines, "\n")
+		} else {
+			userMessage = update.Message.Text
+		}
+
+		if quotedText != "" {
+			userInput = "Quoted message: " + quotedText + "\n" + update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + userMessage
+		} else {
+			if !update.Message.ReplyToMessage.From.IsBot {
+				userInput = update.Message.ReplyToMessage.From.FirstName + " " + update.Message.ReplyToMessage.From.LastName + ": " + update.Message.ReplyToMessage.Text + "\n" + update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + userMessage
+			} else {
+				userInput = update.Message.ReplyToMessage.From.FirstName + ": " + update.Message.ReplyToMessage.Text + "\n" + update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + userMessage
+			}
+		}
+
+	} else {
+		userInput = update.Message.From.FirstName + " " + update.Message.From.LastName + ": " + update.Message.Text
 	}
 
 	switch promptType {
