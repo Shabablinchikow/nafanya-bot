@@ -92,19 +92,13 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 	return h.getPromptResponseVertexAI(prompt, userInput, maxTokens)
 }
 
-const defaultGeminiMaxTokens = 8192
-
 const geminiModel = "gemini-3.1-pro-preview"
 const geminiRetries = 3
 
-func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, maxTokens int) (string, error) {
-	if maxTokens <= 0 {
-		maxTokens = defaultGeminiMaxTokens
-	}
+func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, _ int) (string, error) {
 
 	cfg := &genaisdk.GenerateContentConfig{
 		SystemInstruction: genaisdk.NewContentFromText(prompt, "user"),
-		MaxOutputTokens:   int32(maxTokens),
 		SafetySettings: []*genaisdk.SafetySetting{
 			{Category: genaisdk.HarmCategoryHarassment, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
 			{Category: genaisdk.HarmCategoryHateSpeech, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
