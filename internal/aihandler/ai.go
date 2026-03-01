@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
@@ -93,31 +94,48 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 
 const defaultGeminiMaxTokens = 8192
 
+// geminiModels is the priority list — falls through on 503/overload.
+var geminiModels = []string{"gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.0-flash-001"}
+
 func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, maxTokens int) (string, error) {
 	if maxTokens <= 0 {
 		maxTokens = defaultGeminiMaxTokens
 	}
-	resp, err := h.geminiDirect.Models.GenerateContent(
-		context.Background(),
-		"gemini-3.1-pro-preview",
-		genaisdk.Text(userInput),
-		&genaisdk.GenerateContentConfig{
-			SystemInstruction: genaisdk.NewContentFromText(prompt, "user"),
-			MaxOutputTokens:   int32(maxTokens),
-			SafetySettings: []*genaisdk.SafetySetting{
-				{Category: genaisdk.HarmCategoryHarassment, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
-				{Category: genaisdk.HarmCategoryHateSpeech, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
-				{Category: genaisdk.HarmCategorySexuallyExplicit, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
-				{Category: genaisdk.HarmCategoryDangerousContent, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
-			},
+
+	cfg := &genaisdk.GenerateContentConfig{
+		SystemInstruction: genaisdk.NewContentFromText(prompt, "user"),
+		MaxOutputTokens:   int32(maxTokens),
+		SafetySettings: []*genaisdk.SafetySetting{
+			{Category: genaisdk.HarmCategoryHarassment, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
+			{Category: genaisdk.HarmCategoryHateSpeech, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
+			{Category: genaisdk.HarmCategorySexuallyExplicit, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
+			{Category: genaisdk.HarmCategoryDangerousContent, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
 		},
-	)
-	if err != nil {
-		log.Println("Gemini direct error:", err)
-		return "Error generating answer: " + err.Error(), err
 	}
-	return resp.Text(), nil
+
+	var lastErr error
+	for _, modelName := range geminiModels {
+		resp, err := h.geminiDirect.Models.GenerateContent(
+			context.Background(),
+			modelName,
+			genaisdk.Text(userInput),
+			cfg,
+		)
+		if err != nil {
+			log.Printf("Gemini model %s error: %v", modelName, err)
+			lastErr = err
+			// Try next model on overload/unavailable
+			errStr := err.Error()
+			if strings.Contains(errStr, "503") || strings.Contains(errStr, "UNAVAILABLE") || strings.Contains(errStr, "high demand") {
+				continue
+			}
+			return "Error generating answer: " + err.Error(), err
+		}
+		return resp.Text(), nil
+	}
+	return "Error generating answer: " + lastErr.Error(), lastErr
 }
+
 
 func (h *Handler) getPromptResponseVertexAI(prompt string, userInput string, maxTokens int) (string, error) {
 	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-001")
