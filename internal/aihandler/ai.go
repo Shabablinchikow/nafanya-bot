@@ -91,7 +91,12 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 	return h.getPromptResponseVertexAI(prompt, userInput, maxTokens)
 }
 
+const defaultGeminiMaxTokens = 8192
+
 func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, maxTokens int) (string, error) {
+	if maxTokens <= 0 {
+		maxTokens = defaultGeminiMaxTokens
+	}
 	resp, err := h.geminiDirect.Models.GenerateContent(
 		context.Background(),
 		"gemini-3.1-pro-preview",
