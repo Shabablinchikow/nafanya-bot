@@ -23,8 +23,6 @@ jobs:
           go-version: stable
           cache: false
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: "2.10.1"
-          args: --timeout=5m
-          skip-cache: true
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+          golangci-lint run --timeout=5m
