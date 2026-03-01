@@ -8,11 +8,12 @@ import (
 )
 
 type Cfg struct {
-	BotToken     string
-	OAIToken     string
-	GoogleToken  string
-	DSToken      string
-	DefaultAdmin int64
+	BotToken        string
+	OAIToken        string
+	GoogleToken     string
+	GeminiDirectKey string // plain API key for google.golang.org/genai (image gen)
+	DSToken         string
+	DefaultAdmin    int64
 
 	DBHost   string
 	DBPort   string
@@ -40,6 +41,7 @@ func LoadConfig() Cfg {
 	cfg.OAIToken = fillEnv("AI_TOKEN")
 	cfg.DSToken = getEnv("DS_TOKEN", "")
 	cfg.GoogleToken = string(token)
+	cfg.GeminiDirectKey = getEnv("GEMINI_DIRECT_KEY", "")
 
 	adminID, err := strconv.ParseInt(getEnv("DEFAULT_ADMIN", "438663"), 10, 64)
 	if err != nil {

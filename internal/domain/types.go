@@ -29,6 +29,7 @@ type Chat struct {
 	AgroCooldown             int       `gorm:"type:int"` // cooldown in minutes between random interference
 	BilledTo                 time.Time `gorm:"type:timestamp"`
 	AIModel                  string    `gorm:"type:text"`
+	ImageModel               string    `gorm:"type:text"`
 }
 
 type BotConfig struct {

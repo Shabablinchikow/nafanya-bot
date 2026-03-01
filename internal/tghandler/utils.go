@@ -92,10 +92,15 @@ func (h *Handler) isPersonal(update tgbotapi.Update) bool {
 }
 
 func isDraw(update tgbotapi.Update) bool {
-	if strings.Contains(update.Message.Text, "нарисуй") || strings.Contains(update.Message.Text, "Нарисуй") {
-		return true
-	}
-	return false
+	return strings.Contains(update.Message.Text, "нарисуй") || strings.Contains(update.Message.Text, "Нарисуй")
+}
+
+func isBanana(update tgbotapi.Update) bool {
+	return strings.Contains(update.Message.Text, "сгенерируй") || strings.Contains(update.Message.Text, "Сгенерируй")
+}
+
+func isDrawAny(update tgbotapi.Update) bool {
+	return isDraw(update) || isBanana(update)
 }
 
 func isSerious(update tgbotapi.Update) bool {
@@ -103,7 +108,7 @@ func isSerious(update tgbotapi.Update) bool {
 }
 
 func getCleanDrawPrompt(update string) string {
-	regex := regexp.MustCompile(`[Нн]афаня[, ]*[Нн]арисуй `)
+	regex := regexp.MustCompile(`[Нн]афаня[, ]*([Нн]арисуй|[Сс]генерируй) `)
 	return regex.ReplaceAllString(update, "")
 }
 
@@ -185,6 +190,22 @@ func (h *Handler) deleteMessage(update tgbotapi.Update) {
 	msg := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
 
 	_, err := h.bot.Send(msg)
+	if err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
+func (h *Handler) sendImageByBytes(update tgbotapi.Update, data []byte, mimeType string) {
+	ext := "png"
+	if mimeType == "image/jpeg" {
+		ext = "jpg"
+	}
+	file := tgbotapi.FileBytes{Name: "image." + ext, Bytes: data}
+	photo := tgbotapi.NewPhoto(update.Message.Chat.ID, file)
+	photo.ReplyToMessageID = update.Message.MessageID
+
+	_, err := h.bot.Send(photo)
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println(err)

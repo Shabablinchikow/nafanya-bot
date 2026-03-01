@@ -61,6 +61,10 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
 	ctx := context.Background()
+	if update.CallbackQuery != nil {
+		h.handleConfigCallback(update)
+		return
+	}
 	if update.Message != nil { // If we got a message
 		sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
 		sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
@@ -132,6 +136,10 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatUpdatePrompt(update, "random")
 	case "chatUpdateModel":
 		h.chatUpdateModel(update)
+	case "chatUpdateImageModel":
+		h.chatUpdateImageModel(update)
+	case "chatConfigure":
+		h.chatConfigure(update)
 	case "updateMaxTokens":
 		h.updateMaxTokens(update)
 	}
@@ -162,16 +170,8 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 
 func (h *Handler) personalHandler(update tgbotapi.Update) {
 	if h.checkAllowed(update.Message.Chat.ID) {
-		if isDraw(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
-			h.sendAction(update, tgbotapi.ChatUploadPhoto)
-			url, err := h.ai.GetImageFromPrompt(getCleanDrawPrompt(update.Message.Text))
-			if err != nil {
-				sentry.CaptureException(err)
-				log.Println(err)
-				h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
-				return
-			}
-			h.sendImageByURL(update, url)
+		if isDrawAny(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
+			h.generateImage(update)
 		} else {
 			h.sendAction(update, tgbotapi.ChatTyping)
 			serious := isSerious(update)
@@ -346,6 +346,8 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
 			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google` or `deepseek`" +
+			"\n\nImage model: " + chat.ImageModel +
+			"\n/chatUpdateImageModel <model> - set image model, use `oai` (gpt-image-1.5) or `banana` (gemini-3.1-flash-image-preview)" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -573,5 +575,201 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 				h.deleteMessage(update)
 			}
 		}
+	}
+}
+
+func (h *Handler) generateImage(update tgbotapi.Update) {
+	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
+		return channel.ID == update.Message.Chat.ID
+	})
+
+	imageModel := "oai"
+	if idx >= 0 && h.chats[idx].ImageModel != "" {
+		imageModel = h.chats[idx].ImageModel
+	}
+
+	prompt := getCleanDrawPrompt(update.Message.Text)
+	h.sendAction(update, tgbotapi.ChatUploadPhoto)
+
+	switch imageModel {
+	case "banana":
+		data, mimeType, err := h.ai.GetImageFromPromptBanana(prompt)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			h.sendMessage(update, "🍌 Банана не смогла нарисовать...\n```\n"+err.Error()+"\n```")
+			return
+		}
+		h.sendImageByBytes(update, data, mimeType)
+	default:
+		url, err := h.ai.GetImageFromPrompt(prompt)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
+			return
+		}
+		h.sendImageByURL(update, url)
+	}
+}
+
+func (h *Handler) chatUpdateImageModel(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			return
+		}
+
+		arg := update.Message.CommandArguments()
+		if arg == "oai" || arg == "banana" {
+			chat.ImageModel = arg
+		} else {
+			h.sendMessage(update, "Invalid image model, use `oai` or `banana`")
+			return
+		}
+
+		if err2 := h.db.UpdateChannelConfig(chat); err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
+			return
+		}
+
+		h.reloadChannels()
+		h.sendMessage(update, "Done")
+	}
+}
+
+// ─── /chatConfigure inline menu ───────────────────────────────────────────────
+
+const (
+	cbPrefix = "cfg:"
+)
+
+func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
+	aiModels := []string{"oai", "google", "deepseek"}
+	imgModels := []string{"oai", "banana"}
+	bools := []string{"true", "false"}
+
+	row := func(label string, opts []string, current string, field string) []tgbotapi.InlineKeyboardButton {
+		var buttons []tgbotapi.InlineKeyboardButton
+		for _, o := range opts {
+			text := o
+			if o == current {
+				text = "✅ " + o
+			}
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(text, cbPrefix+field+":"+o))
+		}
+		_ = label
+		return buttons
+	}
+
+	emotionsStr := "false"
+	if chat.EmotionsEnable {
+		emotionsStr = "true"
+	}
+	previewStr := "false"
+	if chat.DeletePreviewMessages {
+		previewStr = "true"
+	}
+	imgModel := chat.ImageModel
+	if imgModel == "" {
+		imgModel = "oai"
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── AI Model ──", "noop")),
+		row("AI Model", aiModels, chat.AIModel, "aimodel"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Image Model ──", "noop")),
+		row("Image Model", imgModels, imgModel, "imgmodel"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Emotions ──", "noop")),
+		row("Emotions", bools, emotionsStr, "emotions"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Delete link previews ──", "noop")),
+		row("Delete previews", bools, previewStr, "preview"),
+	)
+}
+
+func (h *Handler) chatConfigure(update tgbotapi.Update) {
+	if !h.isChatAdmin(update) {
+		return
+	}
+	chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+	if err != nil {
+		sentry.CaptureException(err)
+		h.sendMessage(update, "DB error: "+err.Error())
+		return
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⚙️ Chat configuration")
+	msg.ReplyMarkup = configKeyboard(chat)
+	if _, err := h.bot.Send(msg); err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
+func (h *Handler) handleConfigCallback(update tgbotapi.Update) {
+	cb := update.CallbackQuery
+	data := cb.Data
+
+	// Always answer to remove spinner
+	answer := tgbotapi.NewCallback(cb.ID, "")
+	_, _ = h.bot.Request(answer)
+
+	if data == "noop" || !strings.HasPrefix(data, cbPrefix) {
+		return
+	}
+
+	// Check admin rights — use chat from the message the button was attached to
+	chatID := cb.Message.Chat.ID
+	userID := cb.From.ID
+	member, err := h.bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatID: chatID, UserID: userID},
+	})
+	if err != nil || (member.Status != "administrator" && member.Status != "creator" && cb.Message.Chat.Type != "private") {
+		_, _ = h.bot.Request(tgbotapi.NewCallbackWithAlert(cb.ID, "Admins only"))
+		return
+	}
+
+	parts := strings.SplitN(strings.TrimPrefix(data, cbPrefix), ":", 2)
+	if len(parts) != 2 {
+		return
+	}
+	field, value := parts[0], parts[1]
+
+	chat, err := h.db.GetChannelConfig(chatID)
+	if err != nil {
+		sentry.CaptureException(err)
+		return
+	}
+
+	switch field {
+	case "aimodel":
+		if value == "oai" || value == "google" || value == "deepseek" {
+			chat.AIModel = value
+		}
+	case "imgmodel":
+		if value == "oai" || value == "banana" {
+			chat.ImageModel = value
+		}
+	case "emotions":
+		chat.EmotionsEnable = value == "true"
+	case "preview":
+		chat.DeletePreviewMessages = value == "true"
+	default:
+		return
+	}
+
+	if err := h.db.UpdateChannelConfig(chat); err != nil {
+		sentry.CaptureException(err)
+		return
+	}
+	h.reloadChannels()
+
+	// Update the keyboard in place
+	edit := tgbotapi.NewEditMessageReplyMarkup(chatID, cb.Message.MessageID, configKeyboard(chat))
+	if _, err := h.bot.Request(edit); err != nil {
+		log.Println(err)
 	}
 }
