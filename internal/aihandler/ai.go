@@ -94,8 +94,8 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 
 const defaultGeminiMaxTokens = 8192
 
-// geminiModels is the priority list — falls through on 503/overload.
-var geminiModels = []string{"gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.0-flash-001"}
+const geminiModel = "gemini-3.1-pro-preview"
+const geminiRetries = 3
 
 func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, maxTokens int) (string, error) {
 	if maxTokens <= 0 {
@@ -114,17 +114,16 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 	}
 
 	var lastErr error
-	for _, modelName := range geminiModels {
+	for i := range geminiRetries {
 		resp, err := h.geminiDirect.Models.GenerateContent(
 			context.Background(),
-			modelName,
+			geminiModel,
 			genaisdk.Text(userInput),
 			cfg,
 		)
 		if err != nil {
-			log.Printf("Gemini model %s error: %v", modelName, err)
+			log.Printf("Gemini attempt %d error: %v", i+1, err)
 			lastErr = err
-			// Try next model on overload/unavailable
 			errStr := err.Error()
 			if strings.Contains(errStr, "503") || strings.Contains(errStr, "UNAVAILABLE") || strings.Contains(errStr, "high demand") {
 				continue
