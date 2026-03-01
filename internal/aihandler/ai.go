@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 
 	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
@@ -118,15 +117,11 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 		if err != nil {
 			log.Printf("Gemini attempt %d error: %v", i+1, err)
 			lastErr = err
-			errStr := err.Error()
-			if strings.Contains(errStr, "503") || strings.Contains(errStr, "UNAVAILABLE") || strings.Contains(errStr, "high demand") {
-				continue
-			}
-			return "Error generating answer: " + err.Error(), err
+			continue
 		}
 		return resp.Text(), nil
 	}
-	return "Error generating answer: " + lastErr.Error(), lastErr
+	return "", lastErr
 }
 
 
