@@ -537,9 +537,19 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 	}
 }
 
+// extractCaption returns the original message text with all URLs stripped and trimmed.
+// Returns empty string if there's nothing left (message was just a URL).
+func extractCaption(text string) string {
+	rxRelaxed := xurls.Relaxed()
+	caption := strings.TrimSpace(rxRelaxed.ReplaceAllString(text, ""))
+	return caption
+}
+
 func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
+	caption := extractCaption(update.Message.Text)
+
 	for _, url := range urls {
 		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://mobile.twitter.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
@@ -547,7 +557,7 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://fxtwitter.com")
 			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://fxtwitter.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
@@ -558,7 +568,7 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://x.com", "https://fxtwitter.com")
 			url = strings.ReplaceAll(url, "https://www.x.com", "https://fxtwitter.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
@@ -569,13 +579,21 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://kkinstagram.com")
 			url = strings.ReplaceAll(url, "https://instagram.com", "https://kkinstagram.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
 			}
 		}
 	}
+}
+
+func buildFixedMessage(username, url, caption string) string {
+	msg := "Saved @" + username + " a click:\n" + url
+	if caption != "" {
+		msg += "\n\n> " + strings.ReplaceAll(caption, "\n", "\n> ")
+	}
+	return msg
 }
 
 func (h *Handler) generateImage(update tgbotapi.Update) {
