@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
 	"github.com/sashabaranov/go-openai"
 	genaisdk "google.golang.org/genai"
+	"mvdan.cc/xurls/v2"
 )
 
 type Handler struct {
@@ -94,6 +96,21 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 const geminiModel = "gemini-3.1-pro-preview"
 const geminiRetries = 3
 
+// extractYouTubeURLs finds YouTube URLs in userInput, returns them and the cleaned text.
+func extractYouTubeURLs(userInput string) ([]string, string) {
+	rxRelaxed := xurls.Relaxed()
+	allURLs := rxRelaxed.FindAllString(userInput, -1)
+	remaining := userInput
+	var ytURLs []string
+	for _, u := range allURLs {
+		if strings.Contains(u, "youtube.com") || strings.Contains(u, "youtu.be") {
+			ytURLs = append(ytURLs, u)
+			remaining = strings.ReplaceAll(remaining, u, "")
+		}
+	}
+	return ytURLs, strings.TrimSpace(remaining)
+}
+
 func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, _ int) (string, error) {
 
 	cfg := &genaisdk.GenerateContentConfig{
@@ -106,12 +123,20 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 		},
 	}
 
+	ytURLs, cleanedInput := extractYouTubeURLs(userInput)
+	parts := make([]*genaisdk.Part, 0, len(ytURLs)+1)
+	for _, u := range ytURLs {
+		parts = append(parts, genaisdk.NewPartFromURI(u, "video/mp4"))
+	}
+	parts = append(parts, genaisdk.NewPartFromText(cleanedInput))
+	contents := []*genaisdk.Content{genaisdk.NewContentFromParts(parts, "user")}
+
 	var lastErr error
 	for i := range geminiRetries {
 		resp, err := h.geminiDirect.Models.GenerateContent(
 			context.Background(),
 			geminiModel,
-			genaisdk.Text(userInput),
+			contents,
 			cfg,
 		)
 		if err != nil {
@@ -140,7 +165,13 @@ func (h *Handler) getPromptResponseVertexAI(prompt string, userInput string, max
 	model.SetMaxOutputTokens(int32(maxTokens))
 	model.SetCandidateCount(1)
 
-	resp, err := model.GenerateContent(context.Background(), genai.Text(userInput))
+	ytURLs, cleanedInput := extractYouTubeURLs(userInput)
+	vParts := make([]genai.Part, 0, len(ytURLs)+1)
+	for _, u := range ytURLs {
+		vParts = append(vParts, genai.FileData{FileURI: u, MIMEType: "video/mp4"})
+	}
+	vParts = append(vParts, genai.Text(cleanedInput))
+	resp, err := model.GenerateContent(context.Background(), vParts...)
 	if err != nil {
 		log.Println("Error generating content:", err)
 		return "Error generating answer: " + err.Error(), err
