@@ -576,8 +576,8 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 		}
 		if strings.Contains(url, "https://www.instagram.com") || strings.Contains(url, "https://instagram.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
-			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://kkinstagram.com")
-			url = strings.ReplaceAll(url, "https://instagram.com", "https://kkinstagram.com")
+			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://kksave.com")
+			url = strings.ReplaceAll(url, "https://instagram.com", "https://kksave.com")
 
 			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
