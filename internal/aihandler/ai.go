@@ -2,6 +2,7 @@ package aihandler
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"strings"
@@ -215,27 +216,33 @@ func (h *Handler) GetImageFromPromptBanana(prompt string) ([]byte, string, error
 	return img.ImageBytes, img.MIMEType, nil
 }
 
-func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
+func (h *Handler) GetImageFromPrompt(prompt string) ([]byte, string, error) {
+	// ponytail: gpt-image-* rejects response_format and always returns b64_json
 	img, err := h.aiOAI.CreateImage(context.Background(),
 		openai.ImageRequest{
-			Prompt:         prompt,
-			N:              1,
-			Size:           openai.CreateImageSize1792x1024,
-			ResponseFormat: openai.CreateImageResponseFormatURL,
-			Quality:        openai.CreateImageQualityHD,
-			Model:          cfg.GetImageModelBackendName(cfg.ImageModelGPTImage2),
+			Prompt:  prompt,
+			N:       1,
+			Size:    openai.CreateImageSize1536x1024,
+			Quality: openai.CreateImageQualityHigh,
+			Model:   cfg.GetImageModelBackendName(cfg.ImageModelGPTImage2),
 		})
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println("Image error:", err)
-		return "", err
+		return nil, "", err
 	}
 
-	if len(img.Data) == 0 {
+	if len(img.Data) == 0 || img.Data[0].B64JSON == "" {
 		err := fmt.Errorf("no image data returned from API")
 		sentry.CaptureException(err)
-		return "", err
+		return nil, "", err
 	}
 
-	return img.Data[0].URL, nil
+	data, err := base64.StdEncoding.DecodeString(img.Data[0].B64JSON)
+	if err != nil {
+		sentry.CaptureException(err)
+		return nil, "", err
+	}
+
+	return data, "image/png", nil
 }

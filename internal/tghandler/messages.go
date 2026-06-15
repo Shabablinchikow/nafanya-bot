@@ -603,7 +603,7 @@ func (h *Handler) generateImage(update tgbotapi.Update) {
 		return channel.ID == update.Message.Chat.ID
 	})
 
-	imageModel := "oai"
+	imageModel := string(cfg.DefaultImageModel())
 	if idx >= 0 && h.chats[idx].ImageModel != "" {
 		imageModel = h.chats[idx].ImageModel
 	}
@@ -612,7 +612,7 @@ func (h *Handler) generateImage(update tgbotapi.Update) {
 	h.sendAction(update, tgbotapi.ChatUploadPhoto)
 
 	switch imageModel {
-	case "banana":
+	case string(cfg.ImageModelGemini31):
 		data, mimeType, err := h.ai.GetImageFromPromptBanana(prompt)
 		if err != nil {
 			sentry.CaptureException(err)
@@ -622,14 +622,14 @@ func (h *Handler) generateImage(update tgbotapi.Update) {
 		}
 		h.sendImageByBytes(update, data, mimeType)
 	default:
-		url, err := h.ai.GetImageFromPrompt(prompt)
+		data, mimeType, err := h.ai.GetImageFromPrompt(prompt)
 		if err != nil {
 			sentry.CaptureException(err)
 			log.Println(err)
 			h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
 			return
 		}
-		h.sendImageByURL(update, url)
+		h.sendImageByBytes(update, data, mimeType)
 	}
 }
 
