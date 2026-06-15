@@ -6,21 +6,21 @@ package cfg
 type AIModel string
 
 const (
-	// AI Model identifiers (user-facing)
-	AIModelOAI      AIModel = "oai"
-	AIModelGoogle   AIModel = "google"
-	AIModelDeepSeek AIModel = "deepseek"
+	// AI Model identifiers (user-facing) - using actual model names
+	AIModelGPT55      AIModel = "gpt-5.5"
+	AIModelGemini35  AIModel = "gemini-3.5-flash"
+	AIModelDeepSeekV4 AIModel = "deepseek-v4-pro"
 )
 
 // GetAllAIModels returns all available AI model identifiers
 func GetAllAIModels() []AIModel {
-	return []AIModel{AIModelOAI, AIModelGoogle, AIModelDeepSeek}
+	return []AIModel{AIModelGPT55, AIModelGemini35, AIModelDeepSeekV4}
 }
 
 // IsValidAIModel checks if the given model string is a valid AI model
 func IsValidAIModel(model string) bool {
 	switch AIModel(model) {
-	case AIModelOAI, AIModelGoogle, AIModelDeepSeek:
+	case AIModelGPT55, AIModelGemini35, AIModelDeepSeekV4:
 		return true
 	default:
 		return false
@@ -28,39 +28,32 @@ func IsValidAIModel(model string) bool {
 }
 
 // GetAIModelBackendName returns the actual model name for the AI backend
+// For most models, the user-facing name is the same as the backend name.
 // Note: As of 2026-06-15, gemini-3.5-pro is not yet available as an API model.
 // The current Pro-family baseline is gemini-3.1-pro-preview.
 func GetAIModelBackendName(model AIModel) string {
-	switch model {
-	case AIModelOAI:
-		return "gpt-5.5"
-	case AIModelDeepSeek:
-		return "deepseek-v4-pro"
-	case AIModelGoogle:
-		return "gemini-3.5-flash"
-	default:
-		return ""
-	}
+	// User-facing names match backend names, so return as-is
+	return string(model)
 }
 
 // ImageModel represents the available image generation models
 type ImageModel string
 
 const (
-	// Image Model identifiers (user-facing)
-	ImageModelOAI    ImageModel = "oai"
-	ImageModelBanana ImageModel = "banana"
+	// Image Model identifiers (user-facing) - using actual model names
+	ImageModelGPTImage2    ImageModel = "gpt-image-2"
+	ImageModelGemini31    ImageModel = "gemini-3.1-flash-image"
 )
 
 // GetAllImageModels returns all available image model identifiers
 func GetAllImageModels() []ImageModel {
-	return []ImageModel{ImageModelOAI, ImageModelBanana}
+	return []ImageModel{ImageModelGPTImage2, ImageModelGemini31}
 }
 
 // IsValidImageModel checks if the given model string is a valid image model
 func IsValidImageModel(model string) bool {
 	switch ImageModel(model) {
-	case ImageModelOAI, ImageModelBanana:
+	case ImageModelGPTImage2, ImageModelGemini31:
 		return true
 	default:
 		return false
@@ -70,15 +63,10 @@ func IsValidImageModel(model string) bool {
 // GetImageModelBackendName returns the actual model name for the image backend
 // Note: The -preview suffixed image endpoints (gemini-3.1-flash-image-preview, gemini-3-pro-image-preview)
 // are deprecated and scheduled to shut down on 2026-06-25. Using GA strings instead.
+// For most models, the user-facing name is the same as the backend name.
 func GetImageModelBackendName(model ImageModel) string {
-	switch model {
-	case ImageModelOAI:
-		return "gpt-image-2"
-	case ImageModelBanana:
-		return "gemini-3.1-flash-image"
-	default:
-		return ""
-	}
+	// User-facing names match backend names, so return as-is
+	return string(model)
 }
 
 // VertexAIModel returns the Vertex AI model name for Google
@@ -89,10 +77,10 @@ func VertexAIModel() string {
 
 // DefaultAIModel returns the default AI model
 func DefaultAIModel() AIModel {
-	return AIModelOAI
+	return AIModelGPT55
 }
 
 // DefaultImageModel returns the default image model
 func DefaultImageModel() ImageModel {
-	return ImageModelOAI
+	return ImageModelGPTImage2
 }

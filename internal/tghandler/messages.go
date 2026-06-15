@@ -346,9 +346,9 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
-			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelOAI) + "` or `" + string(cfg.AIModelGoogle) + "` or `" + string(cfg.AIModelDeepSeek) + "`" +
+			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelGPT55) + "` or `" + string(cfg.AIModelGemini35) + "` or `" + string(cfg.AIModelDeepSeekV4) + "`" +
 			"\n\nImage model: " + chat.ImageModel +
-			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelOAI) + "` (gpt-image-2) or `" + string(cfg.ImageModelBanana) + "` (gemini-3.1-flash-image)" +
+			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelGPTImage2) + "` or `" + string(cfg.ImageModelGemini31) + "`" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -522,7 +522,7 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 		if cfg.IsValidAIModel(arg) {
 			chat.AIModel = arg
 		} else {
-			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelOAI)+"` or `"+string(cfg.AIModelGoogle)+"` or `"+string(cfg.AIModelDeepSeek)+"`")
+			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelGPT55)+"` or `"+string(cfg.AIModelGemini35)+"` or `"+string(cfg.AIModelDeepSeekV4)+"`")
 			return
 		}
 
@@ -646,7 +646,7 @@ func (h *Handler) chatUpdateImageModel(update tgbotapi.Update) {
 		if cfg.IsValidImageModel(arg) {
 			chat.ImageModel = arg
 		} else {
-			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelOAI)+"` or `"+string(cfg.ImageModelBanana)+"`")
+			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelGPTImage2)+"` or `"+string(cfg.ImageModelGemini31)+"`")
 			return
 		}
 

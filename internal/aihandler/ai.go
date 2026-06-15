@@ -32,11 +32,11 @@ func NewHandler(oai *openai.Client, googleAI *genai.Client, deep *openai.Client,
 
 func (h *Handler) GetPromptResponse(prompt string, userInput string, model string, maxTokens int) (string, error) {
 	switch model {
-	case string(cfg.AIModelOAI):
+	case string(cfg.AIModelGPT55):
 		return h.GetPromptResponseOAI(prompt, userInput, maxTokens)
-	case string(cfg.AIModelDeepSeek):
+	case string(cfg.AIModelDeepSeekV4):
 		return h.GetPromptResponseDS(prompt, userInput, maxTokens)
-	case string(cfg.AIModelGoogle):
+	case string(cfg.AIModelGemini35):
 		return h.GetPromptResponseGoogle(prompt, userInput, maxTokens)
 	}
 
@@ -44,11 +44,11 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 }
 
 func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelOAI))
+	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelGPT55))
 }
 
 func (h *Handler) GetPromptResponseDS(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelDeepSeek))
+	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelDeepSeekV4))
 }
 
 func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt string, userInput string, maxTokens int, model string) (string, error) {
@@ -135,7 +135,7 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 	for i := range geminiRetries {
 		resp, err := h.geminiDirect.Models.GenerateContent(
 			context.Background(),
-			cfg.GetAIModelBackendName(cfg.AIModelGoogle),
+			cfg.GetAIModelBackendName(cfg.AIModelGemini35),
 			contents,
 			cfg,
 		)
@@ -195,7 +195,7 @@ func (h *Handler) GetImageFromPromptBanana(prompt string) ([]byte, string, error
 
 	resp, err := h.geminiDirect.Models.GenerateImages(
 		context.Background(),
-		cfg.GetImageModelBackendName(cfg.ImageModelBanana),
+		cfg.GetImageModelBackendName(cfg.ImageModelGemini31),
 		prompt,
 		&genaisdk.GenerateImagesConfig{
 			NumberOfImages: 1,
@@ -223,7 +223,7 @@ func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
 			Size:           openai.CreateImageSize1792x1024,
 			ResponseFormat: openai.CreateImageResponseFormatURL,
 			Quality:        openai.CreateImageQualityHD,
-			Model:          cfg.GetImageModelBackendName(cfg.ImageModelOAI),
+			Model:          cfg.GetImageModelBackendName(cfg.ImageModelGPTImage2),
 		})
 	if err != nil {
 		sentry.CaptureException(err)
