@@ -45,14 +45,15 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 }
 
 func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelGPT55))
+	// gpt-5.5 rejects max_tokens and requires max_completion_tokens
+	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelGPT55), true)
 }
 
 func (h *Handler) GetPromptResponseDS(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelDeepSeekV4))
+	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelDeepSeekV4), false)
 }
 
-func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt string, userInput string, maxTokens int, model string) (string, error) {
+func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt string, userInput string, maxTokens int, model string, useCompletionTokens bool) (string, error) {
 	if client == nil {
 		return "", fmt.Errorf("model not available")
 	}
@@ -67,13 +68,17 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 		Content: userInput,
 	})
 
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model:     model,
-			Messages:  messages,
-			MaxTokens: maxTokens,
-		})
+	req := openai.ChatCompletionRequest{
+		Model:    model,
+		Messages: messages,
+	}
+	if useCompletionTokens {
+		req.MaxCompletionTokens = maxTokens
+	} else {
+		req.MaxTokens = maxTokens
+	}
+
+	resp, err := client.CreateChatCompletion(context.Background(), req)
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println("Completion error:", err)
