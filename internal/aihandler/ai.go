@@ -113,7 +113,7 @@ func extractYouTubeURLs(userInput string) ([]string, string) {
 
 func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string, _ int) (string, error) {
 
-	cfg := &genaisdk.GenerateContentConfig{
+	geminiCfg := &genaisdk.GenerateContentConfig{
 		SystemInstruction: genaisdk.NewContentFromText(prompt, "user"),
 		SafetySettings: []*genaisdk.SafetySetting{
 			{Category: genaisdk.HarmCategoryHarassment, Threshold: genaisdk.HarmBlockThresholdBlockOnlyHigh},
@@ -137,7 +137,7 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 			context.Background(),
 			cfg.GetAIModelBackendName(cfg.AIModelGemini35),
 			contents,
-			cfg,
+			geminiCfg,
 		)
 		if err != nil {
 			log.Printf("Gemini attempt %d error: %v", i+1, err)
