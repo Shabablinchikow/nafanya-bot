@@ -3,11 +3,11 @@ module github.com/shabablinchikow/nafanya-bot
 go 1.24
 
 require (
-	cloud.google.com/go/vertexai v0.13.3
+	cloud.google.com/go/vertexai v0.15.0
 	github.com/getsentry/sentry-go v0.32.0
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1
 	github.com/lib/pq v1.10.9
-	github.com/sashabaranov/go-openai v1.40.0
+	github.com/sashabaranov/go-openai v1.41.0
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	google.golang.org/api v0.233.0
 	gorm.io/driver/postgres v1.5.11
@@ -50,7 +50,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	google.golang.org/genai v1.48.0 // indirect
+	google.golang.org/genai v1.50.0 // indirect
 	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250218202821-56aae31c358a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250505200425-f936aa4a68b2 // indirect
