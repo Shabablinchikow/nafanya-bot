@@ -33,9 +33,9 @@ func GetAIModelBackendName(model AIModel) string {
 	case AIModelOAI:
 		return "gpt-5"
 	case AIModelDeepSeek:
-		return "deepseek-chat"
+		return "deepseek-v3"
 	case AIModelGoogle:
-		return "gemini-3.1-pro-preview"
+		return "gemini-2.5-pro-preview"
 	default:
 		return ""
 	}
@@ -69,9 +69,9 @@ func IsValidImageModel(model string) bool {
 func GetImageModelBackendName(model ImageModel) string {
 	switch model {
 	case ImageModelOAI:
-		return "gpt-image-1.5"
+		return "gpt-image-2"
 	case ImageModelBanana:
-		return "imagen-4.0-fast-generate-001"
+		return "imagen-4.0-generate-002"
 	default:
 		return ""
 	}
@@ -79,7 +79,7 @@ func GetImageModelBackendName(model ImageModel) string {
 
 // VertexAIModel returns the Vertex AI model name for Google
 func VertexAIModel() string {
-	return "gemini-2.0-flash-001"
+	return "gemini-2.5-flash-001"
 }
 
 // DefaultAIModel returns the default AI model
