@@ -194,13 +194,14 @@ func (h *Handler) GetImageFromPromptBanana(prompt string) ([]byte, string, error
 		return nil, "", fmt.Errorf("banana unavailable: GEMINI_DIRECT_KEY not configured")
 	}
 
-	resp, err := h.geminiDirect.Models.GenerateImages(
+	// gemini-*-flash-image generates images via GenerateContent (image modality),
+	// not GenerateImages (the Imagen predict endpoint, which 404s for gemini models)
+	resp, err := h.geminiDirect.Models.GenerateContent(
 		context.Background(),
 		cfg.GetImageModelBackendName(cfg.ImageModelGemini31),
-		prompt,
-		&genaisdk.GenerateImagesConfig{
-			NumberOfImages: 1,
-			OutputMIMEType: "image/jpeg",
+		genaisdk.Text(prompt),
+		&genaisdk.GenerateContentConfig{
+			ResponseModalities: []string{"IMAGE"},
 		},
 	)
 	if err != nil {
@@ -208,12 +209,17 @@ func (h *Handler) GetImageFromPromptBanana(prompt string) ([]byte, string, error
 		return nil, "", err
 	}
 
-	if len(resp.GeneratedImages) == 0 || resp.GeneratedImages[0].Image == nil {
-		return nil, "", fmt.Errorf("no image data returned from Imagen")
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+		return nil, "", fmt.Errorf("no image data returned from gemini")
 	}
 
-	img := resp.GeneratedImages[0].Image
-	return img.ImageBytes, img.MIMEType, nil
+	for _, part := range resp.Candidates[0].Content.Parts {
+		if part.InlineData != nil && len(part.InlineData.Data) > 0 {
+			return part.InlineData.Data, part.InlineData.MIMEType, nil
+		}
+	}
+
+	return nil, "", fmt.Errorf("no image data returned from gemini")
 }
 
 func (h *Handler) GetImageFromPrompt(prompt string) ([]byte, string, error) {
