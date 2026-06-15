@@ -7,6 +7,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
 	"log"
@@ -92,7 +93,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 
 			channel.ID = update.Message.Chat.ID
 			channel.Type = update.Message.Chat.Type
-			channel.AIModel = "oai"
+			channel.AIModel = string(cfg.DefaultAIModel())
 			if update.Message.Chat.Type == "private" {
 				channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
 			} else {
@@ -345,9 +346,9 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
-			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google` or `deepseek`" +
+			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelOAI) + "` or `" + string(cfg.AIModelGoogle) + "` or `" + string(cfg.AIModelDeepSeek) + "`" +
 			"\n\nImage model: " + chat.ImageModel +
-			"\n/chatUpdateImageModel <model> - set image model, use `oai` (gpt-image-1.5) or `banana` (gemini-3.1-flash-image-preview)" +
+			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelOAI) + "` (gpt-image-1.5) or `" + string(cfg.ImageModelBanana) + "` (imagen-4.0-fast-generate-001)" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -517,10 +518,11 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 			return
 		}
 
-		if update.Message.CommandArguments() == "oai" || update.Message.CommandArguments() == "google" || update.Message.CommandArguments() == "deepseek" {
-			chat.AIModel = update.Message.CommandArguments()
+		arg := update.Message.CommandArguments()
+		if cfg.IsValidAIModel(arg) {
+			chat.AIModel = arg
 		} else {
-			h.sendMessage(update, "Invalid model, use `oai` or `google` or `deepseek`")
+			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelOAI)+"` or `"+string(cfg.AIModelGoogle)+"` or `"+string(cfg.AIModelDeepSeek)+"`")
 			return
 		}
 
@@ -641,10 +643,10 @@ func (h *Handler) chatUpdateImageModel(update tgbotapi.Update) {
 		}
 
 		arg := update.Message.CommandArguments()
-		if arg == "oai" || arg == "banana" {
+		if cfg.IsValidImageModel(arg) {
 			chat.ImageModel = arg
 		} else {
-			h.sendMessage(update, "Invalid image model, use `oai` or `banana`")
+			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelOAI)+"` or `"+string(cfg.ImageModelBanana)+"`")
 			return
 		}
 
@@ -666,8 +668,15 @@ const (
 )
 
 func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
-	aiModels := []string{"oai", "google", "deepseek"}
-	imgModels := []string{"oai", "banana"}
+	// Convert typed model slices to string slices
+	aiModels := make([]string, len(cfg.GetAllAIModels()))
+	for i, m := range cfg.GetAllAIModels() {
+		aiModels[i] = string(m)
+	}
+	imgModels := make([]string, len(cfg.GetAllImageModels()))
+	for i, m := range cfg.GetAllImageModels() {
+		imgModels[i] = string(m)
+	}
 	bools := []string{"true", "false"}
 
 	row := func(label string, opts []string, current string, field string) []tgbotapi.InlineKeyboardButton {
@@ -693,7 +702,7 @@ func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
 	}
 	imgModel := chat.ImageModel
 	if imgModel == "" {
-		imgModel = "oai"
+		imgModel = string(cfg.DefaultImageModel())
 	}
 
 	return tgbotapi.NewInlineKeyboardMarkup(
@@ -764,11 +773,11 @@ func (h *Handler) handleConfigCallback(update tgbotapi.Update) {
 
 	switch field {
 	case "aimodel":
-		if value == "oai" || value == "google" || value == "deepseek" {
+		if cfg.IsValidAIModel(value) {
 			chat.AIModel = value
 		}
 	case "imgmodel":
-		if value == "oai" || value == "banana" {
+		if cfg.IsValidImageModel(value) {
 			chat.ImageModel = value
 		}
 	case "emotions":

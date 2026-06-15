@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/vertexai/genai"
 	"github.com/getsentry/sentry-go"
+	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/sashabaranov/go-openai"
 	genaisdk "google.golang.org/genai"
 	"mvdan.cc/xurls/v2"
@@ -31,11 +32,11 @@ func NewHandler(oai *openai.Client, googleAI *genai.Client, deep *openai.Client,
 
 func (h *Handler) GetPromptResponse(prompt string, userInput string, model string, maxTokens int) (string, error) {
 	switch model {
-	case "oai":
+	case string(cfg.AIModelOAI):
 		return h.GetPromptResponseOAI(prompt, userInput, maxTokens)
-	case "deepseek":
+	case string(cfg.AIModelDeepSeek):
 		return h.GetPromptResponseDS(prompt, userInput, maxTokens)
-	case "google":
+	case string(cfg.AIModelGoogle):
 		return h.GetPromptResponseGoogle(prompt, userInput, maxTokens)
 	}
 
@@ -43,11 +44,11 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 }
 
 func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, "gpt-5")
+	return h.GetPromptResponseOAICommon(h.aiOAI, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelOAI))
 }
 
 func (h *Handler) GetPromptResponseDS(prompt string, userInput string, maxTokens int) (string, error) {
-	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, "deepseek-chat")
+	return h.GetPromptResponseOAICommon(h.deepSeek, prompt, userInput, maxTokens, cfg.GetAIModelBackendName(cfg.AIModelDeepSeek))
 }
 
 func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt string, userInput string, maxTokens int, model string) (string, error) {
@@ -93,7 +94,6 @@ func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTo
 	return h.getPromptResponseVertexAI(prompt, userInput, maxTokens)
 }
 
-const geminiModel = "gemini-3.1-pro-preview"
 const geminiRetries = 3
 
 // extractYouTubeURLs finds YouTube URLs in userInput, returns them and the cleaned text.
@@ -135,7 +135,7 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 	for i := range geminiRetries {
 		resp, err := h.geminiDirect.Models.GenerateContent(
 			context.Background(),
-			geminiModel,
+			cfg.GetAIModelBackendName(cfg.AIModelGoogle),
 			contents,
 			cfg,
 		)
@@ -151,7 +151,7 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 
 
 func (h *Handler) getPromptResponseVertexAI(prompt string, userInput string, maxTokens int) (string, error) {
-	model := h.aiGoogle.GenerativeModel("gemini-2.0-flash-001")
+	model := h.aiGoogle.GenerativeModel(cfg.VertexAIModel())
 
 	model.SafetySettings = []*genai.SafetySetting{
 		{Category: genai.HarmCategoryHarassment, Threshold: genai.HarmBlockOnlyHigh},
@@ -195,7 +195,7 @@ func (h *Handler) GetImageFromPromptBanana(prompt string) ([]byte, string, error
 
 	resp, err := h.geminiDirect.Models.GenerateImages(
 		context.Background(),
-		"imagen-4.0-fast-generate-001",
+		cfg.GetImageModelBackendName(cfg.ImageModelBanana),
 		prompt,
 		&genaisdk.GenerateImagesConfig{
 			NumberOfImages: 1,
@@ -223,7 +223,7 @@ func (h *Handler) GetImageFromPrompt(prompt string) (string, error) {
 			Size:           openai.CreateImageSize1792x1024,
 			ResponseFormat: openai.CreateImageResponseFormatURL,
 			Quality:        openai.CreateImageQualityHD,
-			Model:          "gpt-image-1.5",
+			Model:          cfg.GetImageModelBackendName(cfg.ImageModelOAI),
 		})
 	if err != nil {
 		sentry.CaptureException(err)

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
 	"log"
@@ -157,7 +158,7 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 
 	// Return correct max tokens based on model
 	aiModel := h.chats[idx].AIModel
-	if aiModel == "google" {
+	if aiModel == string(cfg.AIModelGoogle) {
 		maxTokens = h.config.GoogleMaxTokens
 	} else {
 		maxTokens = h.config.OAIMaxTokens
