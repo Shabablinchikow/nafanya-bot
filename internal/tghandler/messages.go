@@ -348,7 +348,7 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\nAI model: " + chat.AIModel +
 			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelOAI) + "` or `" + string(cfg.AIModelGoogle) + "` or `" + string(cfg.AIModelDeepSeek) + "`" +
 			"\n\nImage model: " + chat.ImageModel +
-			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelOAI) + "` (gpt-image-2) or `" + string(cfg.ImageModelBanana) + "` (imagen-4.0-generate-002)" +
+			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelOAI) + "` (gpt-image-2) or `" + string(cfg.ImageModelBanana) + "` (gemini-3.1-flash-image)" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)

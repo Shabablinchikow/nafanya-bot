@@ -28,14 +28,16 @@ func IsValidAIModel(model string) bool {
 }
 
 // GetAIModelBackendName returns the actual model name for the AI backend
+// Note: As of 2026-06-15, gemini-3.5-pro is not yet available as an API model.
+// The current Pro-family baseline is gemini-3.1-pro-preview.
 func GetAIModelBackendName(model AIModel) string {
 	switch model {
 	case AIModelOAI:
-		return "gpt-5"
+		return "gpt-5.5"
 	case AIModelDeepSeek:
-		return "deepseek-v3"
+		return "deepseek-v4-pro"
 	case AIModelGoogle:
-		return "gemini-2.5-pro-preview"
+		return "gemini-3.5-flash"
 	default:
 		return ""
 	}
@@ -66,20 +68,23 @@ func IsValidImageModel(model string) bool {
 }
 
 // GetImageModelBackendName returns the actual model name for the image backend
+// Note: The -preview suffixed image endpoints (gemini-3.1-flash-image-preview, gemini-3-pro-image-preview)
+// are deprecated and scheduled to shut down on 2026-06-25. Using GA strings instead.
 func GetImageModelBackendName(model ImageModel) string {
 	switch model {
 	case ImageModelOAI:
 		return "gpt-image-2"
 	case ImageModelBanana:
-		return "imagen-4.0-generate-002"
+		return "gemini-3.1-flash-image"
 	default:
 		return ""
 	}
 }
 
 // VertexAIModel returns the Vertex AI model name for Google
+// Using gemini-3.5-flash which is the current GA flagship-class model
 func VertexAIModel() string {
-	return "gemini-2.5-flash-001"
+	return "gemini-3.5-flash"
 }
 
 // DefaultAIModel returns the default AI model
