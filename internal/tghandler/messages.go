@@ -153,7 +153,8 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 func (h *Handler) randomInterference(update tgbotapi.Update) {
 	if len(update.Message.Text) > 20 && len(strings.Split(update.Message.Text, " ")) > 3 {
 		if h.checkAllowed(update.Message.Chat.ID) {
-			h.sendAction(update, tgbotapi.ChatTyping)
+			stop := h.startAction(update, tgbotapi.ChatTyping)
+			defer stop()
 			var message string
 			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update, false))
 			if err != nil {
@@ -174,7 +175,8 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 		if isDrawAny(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
 			h.generateImage(update)
 		} else {
-			h.sendAction(update, tgbotapi.ChatTyping)
+			stop := h.startAction(update, tgbotapi.ChatTyping)
+			defer stop()
 			serious := isSerious(update)
 			var message string
 			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update, serious))
@@ -609,7 +611,8 @@ func (h *Handler) generateImage(update tgbotapi.Update) {
 	}
 
 	prompt := getCleanDrawPrompt(update.Message.Text)
-	h.sendAction(update, tgbotapi.ChatUploadPhoto)
+	stop := h.startAction(update, tgbotapi.ChatUploadPhoto)
+	defer stop()
 
 	switch imageModel {
 	case string(cfg.ImageModelGemini31):

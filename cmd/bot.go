@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"cloud.google.com/go/vertexai/genai"
@@ -86,7 +87,13 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot, err2 := tgbotapi.NewBotAPI(config.BotToken)
+	// Long-poll runs for u.Timeout seconds (60). A bare http.Client has no
+	// timeout, so a stalled connection during a Telegram hiccup can wedge the
+	// serial poll loop indefinitely and the bot goes silent. Cap it just above
+	// the long-poll so a stuck request errors out and the library's retry loop
+	// reconnects — offset is preserved on error, so no messages are lost.
+	httpClient := &http.Client{Timeout: 90 * time.Second}
+	bot, err2 := tgbotapi.NewBotAPIWithClient(config.BotToken, tgbotapi.APIEndpoint, httpClient)
 	if err2 != nil {
 		sentry.CaptureException(err2)
 		log.Panic(err2)

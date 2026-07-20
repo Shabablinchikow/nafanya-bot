@@ -41,7 +41,11 @@ func (h *Handler) GetPromptResponse(prompt string, userInput string, model strin
 		return h.GetPromptResponseGoogle(prompt, userInput, maxTokens)
 	}
 
-	return "", fmt.Errorf("unknown model: %s", model)
+	// Unknown/stale model (e.g. legacy "google" left in the DB) — fall back to the
+	// default model instead of failing the reply. DefaultAIModel() is always valid,
+	// so this recurses at most once.
+	log.Printf("unknown model %q, falling back to default %s", model, cfg.DefaultAIModel())
+	return h.GetPromptResponse(prompt, userInput, string(cfg.DefaultAIModel()), maxTokens)
 }
 
 func (h *Handler) GetPromptResponseOAI(prompt string, userInput string, maxTokens int) (string, error) {

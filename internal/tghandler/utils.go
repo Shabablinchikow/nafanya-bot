@@ -177,6 +177,13 @@ func (h *Handler) reloadChannels() {
 }
 
 func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
+	// Telegram rejects empty text with "Bad Request: message text is empty".
+	// The model occasionally returns an empty string, so send a placeholder
+	// instead of dropping the reply entirely.
+	if strings.TrimSpace(message) == "" {
+		message = "🤔"
+	}
+
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
 	msg.ReplyToMessageID = update.Message.MessageID
 
@@ -190,7 +197,9 @@ func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
 func (h *Handler) deleteMessage(update tgbotapi.Update) {
 	msg := tgbotapi.NewDeleteMessage(update.Message.Chat.ID, update.Message.MessageID)
 
-	_, err := h.bot.Send(msg)
+	// deleteMessage returns `true`, not a Message — use Request to avoid the
+	// "unmarshal bool into tgbotapi.Message" error that Send would raise.
+	_, err := h.bot.Request(msg)
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println(err)
@@ -227,11 +236,38 @@ func (h *Handler) sendImageByURL(update tgbotapi.Update, url string) {
 func (h *Handler) sendAction(update tgbotapi.Update, action string) {
 	msg := tgbotapi.NewChatAction(update.Message.Chat.ID, action)
 
-	_, err := h.bot.Send(msg)
+	// A chat action returns `true`, not a Message — use Request to avoid the
+	// "unmarshal bool into tgbotapi.Message" error that Send would raise.
+	_, err := h.bot.Request(msg)
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println(err)
 	}
+}
+
+// startAction sends a chat action immediately and keeps refreshing it every 4s
+// (Telegram clears the action after ~5s) so "typing…"/"uploading photo…" stays
+// visible for the whole time the bot prepares a reply or image. Call the
+// returned stop func once the reply is sent.
+func (h *Handler) startAction(update tgbotapi.Update, action string) (stop func()) {
+	h.sendAction(update, action)
+
+	ticker := time.NewTicker(4 * time.Second)
+	done := make(chan struct{})
+	go func() {
+		defer sentry.Recover()
+		for {
+			select {
+			case <-done:
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				h.sendAction(update, action)
+			}
+		}
+	}()
+
+	return func() { close(done) }
 }
 
 func (h *Handler) isSupportedURL(update tgbotapi.Update) bool {
