@@ -37,7 +37,7 @@ spec:
             - name: DB_USER
               value: {{ .Values.secrets.db_user }}
             - name: DB_PASS
-              value: {{ .Values.secrets.db_pass }}
+              value: {{ .Values.secrets.db_pass | quote }}
             - name: DB_NAME
               value: {{ .Values.secrets.db_name }}
             - name: DB_SSL
