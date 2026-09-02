@@ -65,4 +65,28 @@ jobs:
         uses: Azure/setup-helm@v4
 
       - name: Run Helm upgrade
-        run: helm upgrade --atomic --install nafanya-bot charts/app -f values.yaml --set image.tag=${{github.sha}} --set secrets.ai_token=${{ secrets.AI_TOKEN }} --set secrets.bot_token=${{ secrets.BOT_TOKEN}} --set secrets.db_pass=${{ secrets.DB_PASS }} --set secrets.db_user=${{ secrets.DB_USER }} --set secrets.db_name=${{ vars.DB_NAME }} --set secrets.db_host=${{ vars.DB_HOST }} --set secrets.db_port=${{ vars.DB_PORT }} --set secrets.db_sslmode=${{ vars.DB_SSLMODE }} --set secrets.sentry_dsn=${{ secrets.SENTRY_DSN }} --set secrets.gemini_api_key=${{ secrets.GEMINI_API_KEY }} --set secrets.gemini_direct_key=${{ secrets.GEMINI_DIRECT_KEY }} --set secrets.ds_token=${{ secrets.DS_TOKEN }}
+        # secrets go through env, not inline ${{ }}: the DB password has shell metacharacters
+        env:
+          AI_TOKEN: ${{ secrets.AI_TOKEN }}
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_USER: ${{ secrets.DB_USER }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_DIRECT_KEY: ${{ secrets.GEMINI_DIRECT_KEY }}
+          DS_TOKEN: ${{ secrets.DS_TOKEN }}
+        run: |
+          helm upgrade --atomic --install nafanya-bot charts/app -f values.yaml \
+            --set image.tag=${{ github.sha }} \
+            --set-string secrets.ai_token="$AI_TOKEN" \
+            --set-string secrets.bot_token="$BOT_TOKEN" \
+            --set-string secrets.db_pass="$DB_PASS" \
+            --set-string secrets.db_user="$DB_USER" \
+            --set-string secrets.db_name=${{ vars.DB_NAME }} \
+            --set-string secrets.db_host=${{ vars.DB_HOST }} \
+            --set-string secrets.db_port=${{ vars.DB_PORT }} \
+            --set-string secrets.db_sslmode=${{ vars.DB_SSLMODE }} \
+            --set-string secrets.sentry_dsn="$SENTRY_DSN" \
+            --set-string secrets.gemini_api_key="$GEMINI_API_KEY" \
+            --set-string secrets.gemini_direct_key="$GEMINI_DIRECT_KEY" \
+            --set-string secrets.ds_token="$DS_TOKEN"
