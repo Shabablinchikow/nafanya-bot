@@ -8,7 +8,6 @@ on:
 env:
   REGISTRY: rg.nl-ams.scw.cloud/shaba
   IMAGE_NAME: nafanya-bot
-  SCW_CLUSTER_ID: 36de1392-6c3f-416a-a145-4d1c2b3695a0
   SCW_REGION: nl-ams
 
 jobs:
@@ -59,7 +58,7 @@ jobs:
           export-config: true
 
       - name: Save Scaleway kubeconfig
-        run: scw k8s kubeconfig install ${{ env.SCW_CLUSTER_ID }} region=${{ env.SCW_REGION }} auth-method=copy-cli-token
+        run: scw k8s kubeconfig install ${{ vars.SCW_CLUSTER_ID }} region=${{ env.SCW_REGION }} auth-method=copy-cli-token
 
       - name: Helm tool installer
         uses: Azure/setup-helm@v4
