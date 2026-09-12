@@ -118,8 +118,73 @@ func isDrawAny(update tgbotapi.Update) bool {
 	return isDraw(update) || isBanana(update)
 }
 
+// seriousMemory bounds how long a serious answer keeps colouring replies to
+// it. Long enough for a conversation to continue, short enough that the map
+// cannot grow without limit. State lives in memory only, so a restart drops it
+// and the thread reverts to the usual tone until someone says "серьёзно" again.
+const seriousMemory = 6 * time.Hour
+
+// rememberSerious records that one of Nafanya's own messages was a serious
+// answer. Expired entries for the chat are dropped on the way in, which keeps
+// the map bounded without a separate sweeper.
+func (h *Handler) rememberSerious(chat int64, messageID int) {
+	h.seriousMsgsMux.Lock()
+	defer h.seriousMsgsMux.Unlock()
+
+	msgs, ok := h.seriousMsgs[chat]
+	if !ok {
+		msgs = make(map[int]time.Time)
+		h.seriousMsgs[chat] = msgs
+	}
+
+	cutoff := time.Now().Add(-seriousMemory)
+	for id, at := range msgs {
+		if at.Before(cutoff) {
+			delete(msgs, id)
+		}
+	}
+
+	msgs[messageID] = time.Now()
+}
+
+// wasSerious reports whether the given message of Nafanya's was answered
+// seriously and is still within seriousMemory.
+func (h *Handler) wasSerious(chat int64, messageID int) bool {
+	h.seriousMsgsMux.Lock()
+	defer h.seriousMsgsMux.Unlock()
+
+	at, ok := h.seriousMsgs[chat][messageID]
+	return ok && time.Since(at) < seriousMemory
+}
+
+// isSeriousRequest decides whether this message should be answered seriously:
+// either it says so itself, or it is a reply to an answer that already was.
+//
+// The second case is what carries the tone through a thread. Telegram only
+// populates one level of ReplyToMessage, so the chain cannot be walked back to
+// the original "нафаня серьёзно" — hence remembering the answers instead. Each
+// serious answer is recorded in turn, so the tone persists for as long as
+// people keep replying.
+func (h *Handler) isSeriousRequest(update tgbotapi.Update) bool {
+	if isSerious(update) {
+		return true
+	}
+
+	reply := update.Message.ReplyToMessage
+	if reply == nil || reply.From == nil || reply.From.ID != h.bot.Self.ID {
+		return false
+	}
+
+	return h.wasSerious(update.Message.Chat.ID, reply.MessageID)
+}
+
 func isSerious(update tgbotapi.Update) bool {
-	return strings.Contains(update.Message.Text, "серьезно")
+	// Matched case-insensitively, and with ё folded to е, so "Серьёзно" and
+	// "СЕРЬЕЗНО" count the same as "серьезно". Both spellings are common and
+	// phone keyboards disagree about which one they produce.
+	text := strings.ToLower(update.Message.Text)
+	text = strings.ReplaceAll(text, "ё", "е")
+	return strings.Contains(text, "серьезно")
 }
 
 func getCleanDrawPrompt(update string) string {
@@ -190,7 +255,10 @@ func (h *Handler) reloadChannels() {
 	}
 }
 
-func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
+// sendMessage posts a reply and returns what Telegram accepted. The returned
+// message is the zero value when sending failed; callers that only want the
+// side effect can ignore it.
+func (h *Handler) sendMessage(update tgbotapi.Update, message string) tgbotapi.Message {
 	// Telegram rejects empty text with "Bad Request: message text is empty".
 	// The model occasionally returns an empty string, so send a placeholder
 	// instead of dropping the reply entirely.
@@ -201,11 +269,14 @@ func (h *Handler) sendMessage(update tgbotapi.Update, message string) {
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, message)
 	msg.ReplyToMessageID = update.Message.MessageID
 
-	_, err := h.bot.Send(msg)
+	sent, err := h.bot.Send(msg)
 	if err != nil {
 		sentry.CaptureException(err)
 		log.Println(err)
+		return tgbotapi.Message{}
 	}
+
+	return sent
 }
 
 func (h *Handler) deleteMessage(update tgbotapi.Update) {

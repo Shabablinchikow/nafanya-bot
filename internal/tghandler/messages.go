@@ -26,6 +26,11 @@ type Handler struct {
 	config       domain.BotConfig
 	chatCache    map[int64]chatCache
 	chatCacheMux sync.RWMutex
+
+	// IDs of Nafanya's own answers that were given seriously, per chat, so a
+	// reply to one of them stays serious without repeating "серьёзно".
+	seriousMsgs    map[int64]map[int]time.Time
+	seriousMsgsMux sync.Mutex
 }
 
 const (
@@ -49,12 +54,13 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 	config.OAIMaxTokens = oai
 
 	return &Handler{
-		bot:       bot,
-		ai:        ai,
-		db:        db,
-		chats:     channels,
-		config:    config,
-		chatCache: make(map[int64]chatCache),
+		bot:         bot,
+		ai:          ai,
+		db:          db,
+		chats:       channels,
+		config:      config,
+		chatCache:   make(map[int64]chatCache),
+		seriousMsgs: make(map[int64]map[int]time.Time),
 	}
 }
 
@@ -177,7 +183,7 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 		} else {
 			stop := h.startAction(update, tgbotapi.ChatTyping)
 			defer stop()
-			serious := isSerious(update)
+			serious := h.isSeriousRequest(update)
 			var message string
 			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update, serious))
 			if err != nil {
@@ -188,7 +194,10 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 				message = ans
 			}
 
-			h.sendMessage(update, message)
+			sent := h.sendMessage(update, message)
+			if serious && sent.MessageID != 0 {
+				h.rememberSerious(update.Message.Chat.ID, sent.MessageID)
+			}
 		}
 	}
 }
