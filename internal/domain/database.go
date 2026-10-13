@@ -18,6 +18,13 @@ func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, e
 		return nil, err
 	}
 
+	// ponytail: shared RDB has max_connections=100; gorm's pool is otherwise unbounded.
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+	sqlDB.SetMaxOpenConns(5)
+
 	err2 := db.AutoMigrate(&Chat{}, &BotConfig{})
 	if err2 != nil {
 		panic(err2)

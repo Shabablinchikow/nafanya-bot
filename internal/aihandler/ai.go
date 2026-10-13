@@ -79,7 +79,7 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 	if useCompletionTokens {
 		req.MaxCompletionTokens = maxTokens
 	} else {
-		req.MaxTokens = maxTokens
+		req.MaxTokens = maxTokens //nolint:staticcheck // providers without max_completion_tokens support still need it
 	}
 
 	resp, err := client.CreateChatCompletion(context.Background(), req)

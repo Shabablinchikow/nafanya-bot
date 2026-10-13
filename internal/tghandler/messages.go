@@ -9,7 +9,7 @@ import (
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
-	"golang.org/x/exp/slices"
+	"slices"
 	"log"
 	"mvdan.cc/xurls/v2"
 	"strconv"
