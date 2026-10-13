@@ -6,7 +6,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
-	"golang.org/x/exp/slices"
+	"slices"
 	"log"
 	"math/big"
 	"mvdan.cc/xurls/v2"
