@@ -12,7 +12,7 @@ require (
 	google.golang.org/api v0.237.0
 	google.golang.org/genai v1.50.0
 	gorm.io/driver/postgres v1.5.11
-	gorm.io/gorm v1.26.1
+	gorm.io/gorm v1.31.0
 	mvdan.cc/xurls/v2 v2.6.0
 )
 
