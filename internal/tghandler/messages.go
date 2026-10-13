@@ -7,22 +7,30 @@ import (
 	"github.com/getsentry/sentry-go"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
+	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"golang.org/x/exp/slices"
 	"log"
 	"mvdan.cc/xurls/v2"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Handler struct {
-	bot       *tgbotapi.BotAPI
-	ai        *aihandler.Handler
-	db        *domain.Handler
-	chats     []domain.Chat
-	config    domain.BotConfig
-	chatCache map[int64]chatCache
+	bot          *tgbotapi.BotAPI
+	ai           *aihandler.Handler
+	db           *domain.Handler
+	chats        []domain.Chat
+	config       domain.BotConfig
+	chatCache    map[int64]chatCache
+	chatCacheMux sync.RWMutex
+
+	// IDs of Nafanya's own answers that were given seriously, per chat, so a
+	// reply to one of them stays serious without repeating "серьёзно".
+	seriousMsgs    map[int64]map[int]time.Time
+	seriousMsgsMux sync.Mutex
 }
 
 const (
@@ -46,12 +54,13 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 	config.OAIMaxTokens = oai
 
 	return &Handler{
-		bot:       bot,
-		ai:        ai,
-		db:        db,
-		chats:     channels,
-		config:    config,
-		chatCache: make(map[int64]chatCache),
+		bot:         bot,
+		ai:          ai,
+		db:          db,
+		chats:       channels,
+		config:      config,
+		chatCache:   make(map[int64]chatCache),
+		seriousMsgs: make(map[int64]map[int]time.Time),
 	}
 }
 
@@ -59,6 +68,10 @@ func NewHandler(bot *tgbotapi.BotAPI, ai *aihandler.Handler, db *domain.Handler)
 func (h *Handler) HandleEvents(update tgbotapi.Update) {
 	defer sentry.Recover()
 	ctx := context.Background()
+	if update.CallbackQuery != nil {
+		h.handleConfigCallback(update)
+		return
+	}
 	if update.Message != nil { // If we got a message
 		sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
 		sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
@@ -81,13 +94,12 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				h.randomInterference(update)
 				span.Finish()
 			}
-			ctx.Done()
 		} else {
 			channel := domain.GetDefaultChat()
 
 			channel.ID = update.Message.Chat.ID
 			channel.Type = update.Message.Chat.Type
-			channel.AIModel = "oai"
+			channel.AIModel = string(cfg.DefaultAIModel())
 			if update.Message.Chat.Type == "private" {
 				channel.ChatName = update.Message.Chat.FirstName + " " + update.Message.Chat.LastName
 			} else {
@@ -131,6 +143,10 @@ func (h *Handler) commandHandler(update tgbotapi.Update) {
 		h.chatUpdatePrompt(update, "random")
 	case "chatUpdateModel":
 		h.chatUpdateModel(update)
+	case "chatUpdateImageModel":
+		h.chatUpdateImageModel(update)
+	case "chatConfigure":
+		h.chatConfigure(update)
 	case "updateMaxTokens":
 		h.updateMaxTokens(update)
 	}
@@ -143,9 +159,10 @@ func (h *Handler) startMessage(update tgbotapi.Update) {
 func (h *Handler) randomInterference(update tgbotapi.Update) {
 	if len(update.Message.Text) > 20 && len(strings.Split(update.Message.Text, " ")) > 3 {
 		if h.checkAllowed(update.Message.Chat.ID) {
-			h.sendAction(update, tgbotapi.ChatTyping)
+			stop := h.startAction(update, tgbotapi.ChatTyping)
+			defer stop()
 			var message string
-			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update))
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, RandomInterference, update, false))
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
@@ -161,20 +178,14 @@ func (h *Handler) randomInterference(update tgbotapi.Update) {
 
 func (h *Handler) personalHandler(update tgbotapi.Update) {
 	if h.checkAllowed(update.Message.Chat.ID) {
-		if isDraw(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
-			h.sendAction(update, tgbotapi.ChatUploadPhoto)
-			url, err := h.ai.GetImageFromPrompt(getCleanDrawPrompt(update.Message.Text))
-			if err != nil {
-				sentry.CaptureException(err)
-				log.Println(err)
-				h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
-				return
-			}
-			h.sendImageByURL(update, url)
+		if isDrawAny(update) && len(update.Message.Text) >= 16 && len(strings.Split(update.Message.Text, " ")) >= 2 {
+			h.generateImage(update)
 		} else {
-			h.sendAction(update, tgbotapi.ChatTyping)
+			stop := h.startAction(update, tgbotapi.ChatTyping)
+			defer stop()
+			serious := h.isSeriousRequest(update)
 			var message string
-			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update))
+			ans, err := h.ai.GetPromptResponse(h.promptCompiler(update.Message.Chat.ID, Question, update, serious))
 			if err != nil {
 				sentry.CaptureException(err)
 				log.Println(err)
@@ -183,7 +194,10 @@ func (h *Handler) personalHandler(update tgbotapi.Update) {
 				message = ans
 			}
 
-			h.sendMessage(update, message)
+			sent := h.sendMessage(update, message)
+			if serious && sent.MessageID != 0 {
+				h.rememberSerious(update.Message.Chat.ID, sent.MessageID)
+			}
 		}
 	}
 }
@@ -194,11 +208,13 @@ func (h *Handler) listChats(update tgbotapi.Update) {
 		var message string
 		for _, chat := range h.chats {
 			var lastRand string
+			h.chatCacheMux.RLock()
 			if val, ok := h.chatCache[chat.ID]; !ok {
 				lastRand = "never"
 			} else {
 				lastRand = val.lastRand.Format("2006-01-02 15:04:05")
 			}
+			h.chatCacheMux.RUnlock()
 			message += "/chat " + strconv.FormatInt(chat.ID, 10) +
 				"\nChat: " + chat.ChatName +
 				"\nType: " + chat.Type +
@@ -341,7 +357,9 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
-			"\n/chatUpdateModel <model> - set AI model, use `oai` or `google` or `deepseek`" +
+			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelGPT55) + "` or `" + string(cfg.AIModelGemini35) + "` or `" + string(cfg.AIModelDeepSeekV4) + "`" +
+			"\n\nImage model: " + chat.ImageModel +
+			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelGPTImage2) + "` or `" + string(cfg.ImageModelGemini31) + "`" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -435,7 +453,7 @@ func (h *Handler) chatSetPreviewDeletion(update tgbotapi.Update) {
 		newDel, err := strconv.ParseBool(update.Message.CommandArguments())
 
 		if err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid agro format, use `true` or `false`")
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "invalid preview deletion format, use `true` or `false`")
 			msg.ReplyToMessageID = update.Message.MessageID
 
 			_, err2 := h.bot.Send(msg)
@@ -511,10 +529,11 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 			return
 		}
 
-		if update.Message.CommandArguments() == "oai" || update.Message.CommandArguments() == "google" || update.Message.CommandArguments() == "deepseek" {
-			chat.AIModel = update.Message.CommandArguments()
+		arg := update.Message.CommandArguments()
+		if cfg.IsValidAIModel(arg) {
+			chat.AIModel = arg
 		} else {
-			h.sendMessage(update, "Invalid model, use `oai` or `google` or `deepseek`")
+			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelGPT55)+"` or `"+string(cfg.AIModelGemini35)+"` or `"+string(cfg.AIModelDeepSeekV4)+"`")
 			return
 		}
 
@@ -531,9 +550,19 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 	}
 }
 
+// extractCaption returns the original message text with all URLs stripped and trimmed.
+// Returns empty string if there's nothing left (message was just a URL).
+func extractCaption(text string) string {
+	rxRelaxed := xurls.Relaxed()
+	caption := strings.TrimSpace(rxRelaxed.ReplaceAllString(text, ""))
+	return caption
+}
+
 func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 	rxRelaxed := xurls.Relaxed()
 	urls := rxRelaxed.FindAllString(update.Message.Text, -1)
+	caption := extractCaption(update.Message.Text)
+
 	for _, url := range urls {
 		if strings.Contains(url, "https://twitter.com") || strings.Contains(url, "https://www.twitter.com") || strings.Contains(url, "https://mobile.twitter.com") {
 			h.sendAction(update, tgbotapi.ChatTyping)
@@ -541,7 +570,7 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://www.twitter.com", "https://fxtwitter.com")
 			url = strings.ReplaceAll(url, "https://mobile.twitter.com", "https://fxtwitter.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
@@ -552,7 +581,7 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://x.com", "https://fxtwitter.com")
 			url = strings.ReplaceAll(url, "https://www.x.com", "https://fxtwitter.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
@@ -563,11 +592,223 @@ func (h *Handler) fixURLPreview(update tgbotapi.Update) {
 			url = strings.ReplaceAll(url, "https://www.instagram.com", "https://kkinstagram.com")
 			url = strings.ReplaceAll(url, "https://instagram.com", "https://kkinstagram.com")
 
-			message := "Saved @" + update.Message.From.UserName + " a click:\n" + url
+			message := buildFixedMessage(update.Message.From.UserName, url, caption)
 			h.sendMessage(update, message)
 			if h.isDeletePreview(update.Message.Chat) {
 				h.deleteMessage(update)
 			}
 		}
+	}
+}
+
+func buildFixedMessage(username, url, caption string) string {
+	msg := "Saved @" + username + " a click:\n" + url
+	if caption != "" {
+		msg += "\n\n> " + strings.ReplaceAll(caption, "\n", "\n> ")
+	}
+	return msg
+}
+
+func (h *Handler) generateImage(update tgbotapi.Update) {
+	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
+		return channel.ID == update.Message.Chat.ID
+	})
+
+	imageModel := string(cfg.DefaultImageModel())
+	if idx >= 0 && h.chats[idx].ImageModel != "" {
+		imageModel = h.chats[idx].ImageModel
+	}
+
+	prompt := getCleanDrawPrompt(update.Message.Text)
+	stop := h.startAction(update, tgbotapi.ChatUploadPhoto)
+	defer stop()
+
+	switch imageModel {
+	case string(cfg.ImageModelGemini31):
+		data, mimeType, err := h.ai.GetImageFromPromptBanana(prompt)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			h.sendMessage(update, "🍌 Банана не смогла нарисовать...\n```\n"+err.Error()+"\n```")
+			return
+		}
+		h.sendImageByBytes(update, data, mimeType)
+	default:
+		data, mimeType, err := h.ai.GetImageFromPrompt(prompt)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			h.sendMessage(update, openAIErrorMessage+"\n```\n"+err.Error()+"\n```")
+			return
+		}
+		h.sendImageByBytes(update, data, mimeType)
+	}
+}
+
+func (h *Handler) chatUpdateImageModel(update tgbotapi.Update) {
+	if h.isChatAdmin(update) {
+		chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+		if err != nil {
+			sentry.CaptureException(err)
+			log.Println(err)
+			return
+		}
+
+		arg := update.Message.CommandArguments()
+		if cfg.IsValidImageModel(arg) {
+			chat.ImageModel = arg
+		} else {
+			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelGPTImage2)+"` or `"+string(cfg.ImageModelGemini31)+"`")
+			return
+		}
+
+		if err2 := h.db.UpdateChannelConfig(chat); err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println(err2)
+			return
+		}
+
+		h.reloadChannels()
+		h.sendMessage(update, "Done")
+	}
+}
+
+// ─── /chatConfigure inline menu ───────────────────────────────────────────────
+
+const (
+	cbPrefix = "cfg:"
+)
+
+func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
+	// Convert typed model slices to string slices
+	aiModels := make([]string, len(cfg.GetAllAIModels()))
+	for i, m := range cfg.GetAllAIModels() {
+		aiModels[i] = string(m)
+	}
+	imgModels := make([]string, len(cfg.GetAllImageModels()))
+	for i, m := range cfg.GetAllImageModels() {
+		imgModels[i] = string(m)
+	}
+	bools := []string{"true", "false"}
+
+	row := func(label string, opts []string, current string, field string) []tgbotapi.InlineKeyboardButton {
+		var buttons []tgbotapi.InlineKeyboardButton
+		for _, o := range opts {
+			text := o
+			if o == current {
+				text = "✅ " + o
+			}
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(text, cbPrefix+field+":"+o))
+		}
+		_ = label
+		return buttons
+	}
+
+	emotionsStr := "false"
+	if chat.EmotionsEnable {
+		emotionsStr = "true"
+	}
+	previewStr := "false"
+	if chat.DeletePreviewMessages {
+		previewStr = "true"
+	}
+	imgModel := chat.ImageModel
+	if imgModel == "" {
+		imgModel = string(cfg.DefaultImageModel())
+	}
+
+	return tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── AI Model ──", "noop")),
+		row("AI Model", aiModels, chat.AIModel, "aimodel"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Image Model ──", "noop")),
+		row("Image Model", imgModels, imgModel, "imgmodel"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Emotions ──", "noop")),
+		row("Emotions", bools, emotionsStr, "emotions"),
+		tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("── Delete link previews ──", "noop")),
+		row("Delete previews", bools, previewStr, "preview"),
+	)
+}
+
+func (h *Handler) chatConfigure(update tgbotapi.Update) {
+	if !h.isChatAdmin(update) {
+		return
+	}
+	chat, err := h.db.GetChannelConfig(update.Message.Chat.ID)
+	if err != nil {
+		sentry.CaptureException(err)
+		h.sendMessage(update, "DB error: "+err.Error())
+		return
+	}
+
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⚙️ Chat configuration")
+	msg.ReplyMarkup = configKeyboard(chat)
+	if _, err := h.bot.Send(msg); err != nil {
+		sentry.CaptureException(err)
+		log.Println(err)
+	}
+}
+
+func (h *Handler) handleConfigCallback(update tgbotapi.Update) {
+	cb := update.CallbackQuery
+	data := cb.Data
+
+	// Always answer to remove spinner
+	answer := tgbotapi.NewCallback(cb.ID, "")
+	_, _ = h.bot.Request(answer)
+
+	if data == "noop" || !strings.HasPrefix(data, cbPrefix) {
+		return
+	}
+
+	// Check admin rights — use chat from the message the button was attached to
+	chatID := cb.Message.Chat.ID
+	userID := cb.From.ID
+	member, err := h.bot.GetChatMember(tgbotapi.GetChatMemberConfig{
+		ChatConfigWithUser: tgbotapi.ChatConfigWithUser{ChatID: chatID, UserID: userID},
+	})
+	if err != nil || (member.Status != "administrator" && member.Status != "creator" && cb.Message.Chat.Type != "private") {
+		_, _ = h.bot.Request(tgbotapi.NewCallbackWithAlert(cb.ID, "Admins only"))
+		return
+	}
+
+	parts := strings.SplitN(strings.TrimPrefix(data, cbPrefix), ":", 2)
+	if len(parts) != 2 {
+		return
+	}
+	field, value := parts[0], parts[1]
+
+	chat, err := h.db.GetChannelConfig(chatID)
+	if err != nil {
+		sentry.CaptureException(err)
+		return
+	}
+
+	switch field {
+	case "aimodel":
+		if cfg.IsValidAIModel(value) {
+			chat.AIModel = value
+		}
+	case "imgmodel":
+		if cfg.IsValidImageModel(value) {
+			chat.ImageModel = value
+		}
+	case "emotions":
+		chat.EmotionsEnable = value == "true"
+	case "preview":
+		chat.DeletePreviewMessages = value == "true"
+	default:
+		return
+	}
+
+	if err := h.db.UpdateChannelConfig(chat); err != nil {
+		sentry.CaptureException(err)
+		return
+	}
+	h.reloadChannels()
+
+	// Update the keyboard in place
+	edit := tgbotapi.NewEditMessageReplyMarkup(chatID, cb.Message.MessageID, configKeyboard(chat))
+	if _, err := h.bot.Request(edit); err != nil {
+		log.Println(err)
 	}
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	"cloud.google.com/go/vertexai/genai"
@@ -13,6 +14,7 @@ import (
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
 	"github.com/shabablinchikow/nafanya-bot/internal/tghandler"
+	genaisdk "google.golang.org/genai"
 	"google.golang.org/api/option"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -57,7 +59,20 @@ func main() {
 		sentry.CaptureException(err2)
 		log.Panic(err2)
 	}
-	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle, dsAI)
+
+	var geminiDirect *genaisdk.Client
+	if config.GeminiDirectKey != "" {
+		geminiDirect, err2 = genaisdk.NewClient(context.Background(), &genaisdk.ClientConfig{
+			APIKey:  config.GeminiDirectKey,
+			Backend: genaisdk.BackendGeminiAPI,
+		})
+		if err2 != nil {
+			sentry.CaptureException(err2)
+			log.Println("Warning: failed to init Gemini direct client:", err2)
+		}
+	}
+
+	aiHndlr := aihandler.NewHandler(aiOAI, aiGoogle, dsAI, geminiDirect)
 
 	dbDSN := "host=" + config.DBHost + " user=" + config.DBUser + " password=" + config.DBPass + " dbname=" + config.DBName + " port=" + config.DBPort + " sslmode=" + config.DBSSL
 	dbConfig := &gorm.Config{
@@ -72,7 +87,13 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot, err2 := tgbotapi.NewBotAPI(config.BotToken)
+	// Long-poll runs for u.Timeout seconds (60). A bare http.Client has no
+	// timeout, so a stalled connection during a Telegram hiccup can wedge the
+	// serial poll loop indefinitely and the bot goes silent. Cap it just above
+	// the long-poll so a stuck request errors out and the library's retry loop
+	// reconnects — offset is preserved on error, so no messages are lost.
+	httpClient := &http.Client{Timeout: 90 * time.Second}
+	bot, err2 := tgbotapi.NewBotAPIWithClient(config.BotToken, tgbotapi.APIEndpoint, httpClient)
 	if err2 != nil {
 		sentry.CaptureException(err2)
 		log.Panic(err2)

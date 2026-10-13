@@ -9,7 +9,7 @@ app:
   version: 0.1.0
 
 image:
-  repository: registry.digitalocean.com/shaba/nafanya-bot
+  repository: rg.nl-ams.scw.cloud/shaba/nafanya-bot
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: "master"
@@ -27,3 +27,5 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+imagePullSecrets:
+  - name: shaba
