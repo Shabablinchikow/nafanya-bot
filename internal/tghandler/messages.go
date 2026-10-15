@@ -9,9 +9,9 @@ import (
 	"github.com/shabablinchikow/nafanya-bot/internal/aihandler"
 	"github.com/shabablinchikow/nafanya-bot/internal/cfg"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
-	"slices"
 	"log"
 	"mvdan.cc/xurls/v2"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -73,6 +73,11 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 		return
 	}
 	if update.Message != nil { // If we got a message
+		f := h.ignoreFilter(update)
+		if f.handle(update.Message) {
+			return
+		}
+		ignored := f.isIgnored(update.Message)
 		sentry.ConfigureScope(func(scope *sentry.Scope) { scope.SetUser(sentry.User{ID: strconv.Itoa(int(update.Message.From.ID))}) })
 		sentry.AddBreadcrumb(&sentry.Breadcrumb{Category: "chat data", Data: map[string]interface{}{"chat id": update.Message.Chat.ID}})
 		if h.checkChatExists(update.Message.Chat) {
@@ -81,7 +86,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				span := sentry.StartSpan(ctx, "command", sentry.WithTransactionName("Handle tg command"))
 				h.commandHandler(update)
 				span.Finish()
-			case h.isPersonal(update):
+			case !ignored && h.isPersonal(update):
 				span := sentry.StartSpan(ctx, "personal", sentry.WithTransactionName("Handle tg personal message"))
 				h.personalHandler(update)
 				span.Finish()
@@ -89,7 +94,7 @@ func (h *Handler) HandleEvents(update tgbotapi.Update) {
 				span := sentry.StartSpan(ctx, "personal", sentry.WithTransactionName("Handle not previewed URL"))
 				h.fixURLPreview(update)
 				span.Finish()
-			case h.isItTime(update.Message.Chat.ID):
+			case !ignored && h.isItTime(update.Message.Chat.ID):
 				span := sentry.StartSpan(ctx, "random", sentry.WithTransactionName("Handle tg random interference"))
 				h.randomInterference(update)
 				span.Finish()
@@ -729,6 +734,8 @@ func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
 	)
 }
 
+const chatConfigurationHelp = "⚙️ Chat configuration\n\nIgnored users: /ignoredusers\nManage: /ignoreuser <ID>, /unignoreuser <ID> (or reply)\nAnyone: /ignoreme, /unignoreme"
+
 func (h *Handler) chatConfigure(update tgbotapi.Update) {
 	if !h.isChatAdmin(update) {
 		return
@@ -740,7 +747,7 @@ func (h *Handler) chatConfigure(update tgbotapi.Update) {
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⚙️ Chat configuration")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, chatConfigurationHelp)
 	msg.ReplyMarkup = configKeyboard(chat)
 	if _, err := h.bot.Send(msg); err != nil {
 		sentry.CaptureException(err)

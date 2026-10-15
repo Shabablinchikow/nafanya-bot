@@ -25,7 +25,7 @@ func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, e
 	}
 	sqlDB.SetMaxOpenConns(5)
 
-	err2 := db.AutoMigrate(&Chat{}, &BotConfig{})
+	err2 := db.AutoMigrate(&Chat{}, &BotConfig{}, &IgnoredUser{})
 	if err2 != nil {
 		panic(err2)
 	}
