@@ -26,7 +26,7 @@ func TestNewGroupIgnoreAdminAuthorization(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				switch r.URL.Path {
 				case "/bottest/getMe":
-					fmt.Fprint(w, `{"ok":true,"result":{"id":1,"is_bot":true,"username":"nafanya"}}`)
+					_, _ = fmt.Fprint(w, `{"ok":true,"result":{"id":1,"is_bot":true,"username":"nafanya"}}`)
 				case "/bottest/getChatAdministrators":
 					lookups++
 					if err := r.ParseForm(); err != nil {
@@ -35,7 +35,7 @@ func TestNewGroupIgnoreAdminAuthorization(t *testing.T) {
 					if r.Form.Get("chat_id") != "-100" {
 						t.Errorf("wrong chat: %v", r.Form)
 					}
-					fmt.Fprint(w, tc.result)
+					_, _ = fmt.Fprint(w, tc.result)
 				default:
 					t.Errorf("unexpected Telegram call: %s", r.URL.Path)
 					http.Error(w, "unexpected request", 500)
