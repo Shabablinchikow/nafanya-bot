@@ -3,7 +3,6 @@ package tghandler
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shabablinchikow/nafanya-bot/internal/domain"
-	"slices"
 )
 
 func (h *Handler) isAdmin(id int64) bool {
@@ -17,14 +16,13 @@ func (h *Handler) isAdmin(id int64) bool {
 }
 
 func (h *Handler) isChatAdmin(update tgbotapi.Update) bool {
-	idx := slices.IndexFunc(h.chats, func(channel domain.Chat) bool {
-		return channel.ID == update.Message.Chat.ID
-	})
-	if idx == -1 {
+	m := update.Message
+	if m == nil || m.Chat == nil || m.From == nil || m.SenderChat != nil {
 		return false
 	}
-
-	if h.chats[idx].Type == domain.ChatTypePrivate {
+	// Authorization must work before the first message registers a new chat.
+	// Use Telegram's incoming chat type and live administrator list, not h.chats.
+	if m.Chat.Type == domain.ChatTypePrivate {
 		return true
 	}
 

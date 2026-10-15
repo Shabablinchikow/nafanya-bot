@@ -66,6 +66,8 @@ func (f ignoreFilter) handle(m *tgbotapi.Message) bool {
 			f.reply("Send this command as your personal account, not anonymously or as a channel.")
 			return true
 		}
+		// Without a sender, normal dispatch cannot identify the user and
+		// would dereference From. Ignore commands above explain the limitation.
 		return m.From == nil
 	}
 	if cmd != "" {

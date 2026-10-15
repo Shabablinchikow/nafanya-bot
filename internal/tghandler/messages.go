@@ -732,6 +732,8 @@ func configKeyboard(chat domain.Chat) tgbotapi.InlineKeyboardMarkup {
 	)
 }
 
+const chatConfigurationHelp = "⚙️ Chat configuration\n\nIgnored users: /ignoredusers\nManage: /ignoreuser <ID>, /unignoreuser <ID> (or reply)\nAnyone: /ignoreme, /unignoreme"
+
 func (h *Handler) chatConfigure(update tgbotapi.Update) {
 	if !h.isChatAdmin(update) {
 		return
@@ -743,7 +745,7 @@ func (h *Handler) chatConfigure(update tgbotapi.Update) {
 		return
 	}
 
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "⚙️ Chat configuration\n\nIgnored users: /ignoredusers\nManage: /ignoreuser <ID>, /unignoreuser <ID> (or reply)\nAnyone: /ignoreme, /unignoreme")
+	msg := tgbotapi.NewMessage(update.Message.Chat.ID, chatConfigurationHelp)
 	msg.ReplyMarkup = configKeyboard(chat)
 	if _, err := h.bot.Send(msg); err != nil {
 		sentry.CaptureException(err)
