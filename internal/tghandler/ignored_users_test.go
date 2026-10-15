@@ -46,26 +46,30 @@ func TestSelfServiceIgnore(t *testing.T) {
 	if !f.handle(ignoreMessage("/ignoreme@NaFaNyA")) || !s.users[[2]int64{-100, 42}] {
 		t.Fatal("opt-out failed")
 	}
-	for _, text := range []string{"Нафаня hello", "/start", "https://x.com/test/status/1", "a random sufficiently long message"} {
-		if !f.handle(ignoreMessage(text)) {
-			t.Fatalf("ignored message escaped: %s", text)
+	// Non-AI features (commands, link fixing) still dispatch for ignored users.
+	for _, text := range []string{"/start", "https://x.com/test/status/1"} {
+		if f.handle(ignoreMessage(text)) {
+			t.Fatalf("non-AI message blocked: %s", text)
 		}
+	}
+	if !f.isIgnored(ignoreMessage("Нафаня hello")) {
+		t.Fatal("ignored user not ignored for AI")
 	}
 	m := ignoreMessage("hello")
 	m.Chat.ID = -200
-	if f.handle(m) {
+	if f.isIgnored(m) {
 		t.Fatal("ignore leaked into another group")
 	}
 	m = ignoreMessage("Нафаня hello")
 	m.From.ID = 99
 	m.ReplyToMessage = ignoreMessage("my message")
-	if f.handle(m) {
+	if f.isIgnored(m) {
 		t.Fatal("human replying to ignored user should pass")
 	}
 	if !f.handle(ignoreMessage("/unignoreme")) || s.users[[2]int64{-100, 42}] {
 		t.Fatal("opt-in failed while ignored")
 	}
-	if f.handle(ignoreMessage("hello")) {
+	if f.isIgnored(ignoreMessage("hello")) {
 		t.Fatal("opted-in user blocked")
 	}
 	if len(replies) != 2 {
@@ -144,8 +148,8 @@ func TestIgnoreScopeAndErrors(t *testing.T) {
 	}
 	s.err = errors.New("database unavailable")
 	replies = nil
-	if !f.handle(ignoreMessage("hello")) || len(replies) > 0 {
-		t.Fatal("lookup failure must silently stop dispatch")
+	if !f.isIgnored(ignoreMessage("hello")) || len(replies) > 0 {
+		t.Fatal("lookup failure must silently skip AI features")
 	}
 	f.handle(ignoreMessage("/ignoreme"))
 	if len(s.users) > 0 || len(replies) != 1 || !strings.Contains(replies[0], "try again") {

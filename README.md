@@ -30,9 +30,9 @@ forward another bot's messages, an admin can add that bot by numeric ID instead.
 No tokens or credentials are needed in this list.
 
 Ignoring is per group/supergroup, not global, and does not change private-chat
-behaviour. Ignored senders cannot trigger ordinary commands, AI replies, random
-interruptions or link previews. Ignore-management commands remain available with
-the permissions above. Existing configuration keyboard buttons also remain
+behaviour. Ignored senders never get AI replies or random interruptions; commands
+and link-preview fixing keep working for them as usual. Ignore-management commands
+remain available with the permissions above. Existing configuration keyboard buttons also remain
 available to ignored group admins, with their normal Telegram admin checks;
 conversation opt-out does not revoke administrative access. Ordinary group
 messages with no sender (`From == nil`) are silently dropped because there is

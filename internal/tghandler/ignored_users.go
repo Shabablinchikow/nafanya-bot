@@ -25,14 +25,13 @@ type ignoreFilter struct {
 	reply       func(string)
 }
 
-func (h *Handler) filterIgnoredMessage(update tgbotapi.Update) bool {
-	f := ignoreFilter{
+func (h *Handler) ignoreFilter(update tgbotapi.Update) ignoreFilter {
+	return ignoreFilter{
 		store:       h.db,
 		botUsername: h.bot.Self.UserName,
 		isAdmin:     func() bool { return h.isChatAdmin(update) },
 		reply:       func(text string) { h.sendMessage(update, text) },
 	}
-	return f.handle(update.Message)
 }
 
 func ignoreCommand(m *tgbotapi.Message, botUsername string) string {
@@ -73,6 +72,15 @@ func (f ignoreFilter) handle(m *tgbotapi.Message) bool {
 	if cmd != "" {
 		f.command(m, cmd)
 		return true
+	}
+	return false
+}
+
+// isIgnored reports whether AI features (personal replies, random
+// interruptions) must skip this sender. Commands and link fixing are unaffected.
+func (f ignoreFilter) isIgnored(m *tgbotapi.Message) bool {
+	if m.From == nil || (m.Chat.Type != domain.ChatTypeGroup && m.Chat.Type != domain.ChatTypeSupergroup) {
+		return false
 	}
 	ignored, err := f.store.IsUserIgnored(m.Chat.ID, m.From.ID)
 	if err != nil {
