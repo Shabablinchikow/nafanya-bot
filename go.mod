@@ -9,7 +9,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/sashabaranov/go-openai v1.43.0
 	google.golang.org/api v0.302.0
-	google.golang.org/genai v1.74.0
+	google.golang.org/genai v1.76.0
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
 	mvdan.cc/xurls/v2 v2.6.0
