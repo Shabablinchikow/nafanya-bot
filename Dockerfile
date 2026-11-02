@@ -1,4 +1,4 @@
-FROM golang:latest AS build
+FROM golang:1.27.3-trixie AS build
 
 WORKDIR /go/src/github.com/shabablinchikow/nafanya-bot
 COPY . /go/src/github.com/shabablinchikow/nafanya-bot
@@ -16,7 +16,7 @@ ENV GOARCH=amd64
 RUN go get -d -v ./...
 RUN go build -C cmd -o /go/bin/nafanya-bot
 
-FROM debian AS build-env
+FROM debian:trixie-slim AS build-env
 
 # Add CA files
 ADD ssl-cert.crt /usr/local/share/ca-certificates/my-ca-file.crt
@@ -25,7 +25,7 @@ RUN apt update -qqq && \
     update-ca-certificates
 
 
-FROM gcr.io/distroless/static-debian11
+FROM gcr.io/distroless/static-debian13
 
 COPY --from=build-env /etc/ssl/certs /etc/ssl/certs
 
