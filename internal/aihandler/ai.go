@@ -3,6 +3,7 @@ package aihandler
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -13,6 +14,12 @@ import (
 	"github.com/sashabaranov/go-openai"
 	genaisdk "google.golang.org/genai"
 	"mvdan.cc/xurls/v2"
+)
+
+// Sent instead of an empty reply so the chat sees why there is no answer.
+const (
+	noAnswerTokens = "No answer: the model used up its output token limit (likely on thinking) before writing anything. Try raising it with updateMaxTokens."
+	noAnswerSafety = "No answer: the provider's safety filter blocked it (%s)."
 )
 
 type Handler struct {
@@ -95,7 +102,16 @@ func (h *Handler) GetPromptResponseOAICommon(client *openai.Client, prompt strin
 		return "", err
 	}
 
-	return resp.Choices[0].Message.Content, nil
+	choice := resp.Choices[0]
+	if strings.TrimSpace(choice.Message.Content) == "" {
+		switch choice.FinishReason {
+		case openai.FinishReasonLength:
+			return noAnswerTokens, nil
+		case openai.FinishReasonContentFilter:
+			return fmt.Sprintf(noAnswerSafety, choice.FinishReason), nil
+		}
+	}
+	return choice.Message.Content, nil
 }
 func (h *Handler) GetPromptResponseGoogle(prompt string, userInput string, maxTokens int) (string, error) {
 	if h.geminiDirect != nil {
@@ -154,7 +170,22 @@ func (h *Handler) getPromptResponseGeminiDirect(prompt string, userInput string,
 			lastErr = err
 			continue
 		}
-		return resp.Text(), nil
+		text := resp.Text()
+		if strings.TrimSpace(text) == "" {
+			if pf := resp.PromptFeedback; pf != nil && pf.BlockReason != "" {
+				return fmt.Sprintf(noAnswerSafety, pf.BlockReason), nil
+			}
+			if len(resp.Candidates) > 0 {
+				switch fr := resp.Candidates[0].FinishReason; fr {
+				case genaisdk.FinishReasonMaxTokens:
+					return noAnswerTokens, nil
+				case genaisdk.FinishReasonSafety, genaisdk.FinishReasonProhibitedContent,
+					genaisdk.FinishReasonBlocklist, genaisdk.FinishReasonSPII:
+					return fmt.Sprintf(noAnswerSafety, fr), nil
+				}
+			}
+		}
+		return text, nil
 	}
 	return "", lastErr
 }
@@ -182,6 +213,10 @@ func (h *Handler) getPromptResponseVertexAI(prompt string, userInput string, max
 	}
 	vParts = append(vParts, genai.Text(cleanedInput))
 	resp, err := model.GenerateContent(context.Background(), vParts...)
+	var blocked *genai.BlockedError
+	if errors.As(err, &blocked) {
+		return fmt.Sprintf(noAnswerSafety, blocked.Error()), nil
+	}
 	if err != nil {
 		log.Println("Error generating content:", err)
 		return "Error generating answer: " + err.Error(), err
@@ -194,6 +229,10 @@ func (h *Handler) getPromptResponseVertexAI(prompt string, userInput string, max
 				respText = fmt.Sprintf("%s%s", respText, part)
 			}
 		}
+	}
+	if strings.TrimSpace(respText) == "" && len(resp.Candidates) > 0 &&
+		resp.Candidates[0].FinishReason == genai.FinishReasonMaxTokens {
+		return noAnswerTokens, nil
 	}
 	return respText, nil
 }
