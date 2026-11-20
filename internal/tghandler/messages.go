@@ -362,9 +362,9 @@ func (h *Handler) chatConfig(update tgbotapi.Update) {
 			"\n\n Links preview deletion: " + strconv.FormatBool(chat.DeletePreviewMessages) +
 			"\n/chatSetPreviewDeletion <true/false> - set links preview deletion" +
 			"\n\nAI model: " + chat.AIModel +
-			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelGPT55) + "` or `" + string(cfg.AIModelGemini35) + "` or `" + string(cfg.AIModelDeepSeekV4) + "`" +
+			"\n/chatUpdateModel <model> - set AI model, use `" + string(cfg.AIModelOpenAI) + "` or `" + string(cfg.AIModelGemini) + "` or `" + string(cfg.AIModelDeepSeek) + "`" +
 			"\n\nImage model: " + chat.ImageModel +
-			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelGPTImage2) + "` or `" + string(cfg.ImageModelGemini31) + "`" +
+			"\n/chatUpdateImageModel <model> - set image model, use `" + string(cfg.ImageModelOpenAI) + "` or `" + string(cfg.ImageModelBanana) + "`" +
 			"\n\nBilled to: " + chat.BilledTo.Format("2006-01-02 15:04:05")
 
 		h.sendMessage(update, message)
@@ -538,7 +538,7 @@ func (h *Handler) chatUpdateModel(update tgbotapi.Update) {
 		if cfg.IsValidAIModel(arg) {
 			chat.AIModel = arg
 		} else {
-			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelGPT55)+"` or `"+string(cfg.AIModelGemini35)+"` or `"+string(cfg.AIModelDeepSeekV4)+"`")
+			h.sendMessage(update, "Invalid model, use `"+string(cfg.AIModelOpenAI)+"` or `"+string(cfg.AIModelGemini)+"` or `"+string(cfg.AIModelDeepSeek)+"`")
 			return
 		}
 
@@ -629,7 +629,7 @@ func (h *Handler) generateImage(update tgbotapi.Update) {
 	defer stop()
 
 	switch imageModel {
-	case string(cfg.ImageModelGemini31):
+	case string(cfg.ImageModelBanana):
 		data, mimeType, err := h.ai.GetImageFromPromptBanana(prompt)
 		if err != nil {
 			sentry.CaptureException(err)
@@ -663,7 +663,7 @@ func (h *Handler) chatUpdateImageModel(update tgbotapi.Update) {
 		if cfg.IsValidImageModel(arg) {
 			chat.ImageModel = arg
 		} else {
-			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelGPTImage2)+"` or `"+string(cfg.ImageModelGemini31)+"`")
+			h.sendMessage(update, "Invalid image model, use `"+string(cfg.ImageModelOpenAI)+"` or `"+string(cfg.ImageModelBanana)+"`")
 			return
 		}
 

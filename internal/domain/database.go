@@ -7,6 +7,15 @@ import (
 	"log"
 )
 
+// legacyModels maps model IDs from older releases to their current cfg.AIModel*/cfg.ImageModel* value.
+var legacyModels = map[string]string{
+	"gpt-5.5":                "gpt-6.2-sol",
+	"gemini-3.5-flash":       "gemini-3.8-flash",
+	"deepseek-v4-pro":        "deepseek-flash",
+	"gpt-image-2":            "gpt-image-2.6-sunburst",
+	"gemini-3.1-flash-image": "gemini-nano-banana-2.1",
+}
+
 type Handler struct {
 	db *gorm.DB
 }
@@ -28,6 +37,12 @@ func NewHandler(dsn string, config gorm.Option, defaultAdmin int64) (*Handler, e
 	err2 := db.AutoMigrate(&Chat{}, &BotConfig{}, &IgnoredUser{})
 	if err2 != nil {
 		panic(err2)
+	}
+
+	// Rewrite model IDs stored by older versions so chats keep their chosen provider.
+	for old, cur := range legacyModels {
+		db.Model(&Chat{}).Where("ai_model = ?", old).Update("ai_model", cur)
+		db.Model(&Chat{}).Where("image_model = ?", old).Update("image_model", cur)
 	}
 
 	log.Println("Migrated")

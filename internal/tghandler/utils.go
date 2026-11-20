@@ -237,7 +237,7 @@ func (h *Handler) promptCompiler(id int64, promptType int, update tgbotapi.Updat
 
 	// Return correct max tokens based on model
 	aiModel := h.chats[idx].AIModel
-	if aiModel == string(cfg.AIModelGemini35) {
+	if aiModel == string(cfg.AIModelGemini) {
 		maxTokens = h.config.GoogleMaxTokens
 	} else {
 		maxTokens = h.config.OAIMaxTokens
